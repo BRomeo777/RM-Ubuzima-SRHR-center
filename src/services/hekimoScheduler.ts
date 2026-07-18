@@ -11,7 +11,7 @@ import { generateHekimoSRHRPost, generateHekimoGeneralPost, getHekimoPersonaInfo
 const KIGALI_OFFSET_HOURS = 2; // UTC+2
 const SRHR_POST_HOUR = 6; // 6AM Kigali time
 const GENERAL_POST_HOUR = 18; // 6PM Kigali time
-const SRHR_INTERVAL_HOURS = 5; // Every 5 hours after 6AM
+const SRHR_INTERVAL_HOURS = 4; // Every 4 hours after 6AM
 
 let schedulerInterval: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
@@ -188,7 +188,7 @@ async function checkAndPost(): Promise<void> {
       }
     }
 
-    // 11AM and 4PM (every 5 hours after 6AM) — additional SRHR posts
+    // 10AM and 2PM (every 4 hours after 6AM) — additional SRHR posts
     if (hour === SRHR_POST_HOUR + SRHR_INTERVAL_HOURS || hour === SRHR_POST_HOUR + SRHR_INTERVAL_HOURS * 2) {
       const postsToday = countHekimoPostsToday();
       const expectedPostsByNow = Math.floor((hour - SRHR_POST_HOUR) / SRHR_INTERVAL_HOURS) + 1;

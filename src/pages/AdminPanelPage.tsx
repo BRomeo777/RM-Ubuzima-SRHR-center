@@ -726,7 +726,7 @@ function AITab({
             )}
             {ai.key === 'hekimo' && (
               <p className="mt-3 text-xs text-cool-400 text-center">
-                Auto-posts at 6AM, 11AM, 4PM (SRHR) &amp; 6PM (General) — Kigali time
+                Auto-posts at 6AM, 10AM, 2PM (SRHR) &amp; 6PM (General) — Kigali time
               </p>
             )}
           </div>
