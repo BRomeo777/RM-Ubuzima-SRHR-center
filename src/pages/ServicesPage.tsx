@@ -53,10 +53,10 @@ export default function ServicesPage() {
       bgHover: 'hover:bg-emerald-50',
     },
     {
-      path: '/organisations',
+      path: '/mpuza',
       icon: Building2,
-      label: t('organisations.title'),
-      description: 'SRHR Organisation',
+      label: t('mpuza.title'),
+      description: t('mpuza.subtitle'),
       gradient: 'from-amber-500 to-orange-500',
       textColor: 'text-amber-700',
       bgHover: 'hover:bg-amber-50',

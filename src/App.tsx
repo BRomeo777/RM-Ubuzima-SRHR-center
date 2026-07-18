@@ -20,7 +20,7 @@ import SRHRInfoPage from './pages/SRHRInfoPage';
 import FindServicePage from './pages/FindServicePage';
 import BookDoctorPage from './pages/BookDoctorPage';
 import BazaMugangaPage from './pages/BazaMugangaPage';
-import OrganisationsPage from './pages/OrganisationsPage';
+import MpuzaPage from './pages/MpuzaPage';
 import EmergencyPage from './pages/EmergencyPage';
 import SettingsPage from './pages/SettingsPage';
 import ServicesPage from './pages/ServicesPage';
@@ -295,7 +295,7 @@ function App() {
       '/girls-room': 'girls-room',
       '/book-doctor': 'book-doctor',
       '/baza-muganga': 'baza-muganga',
-      '/organisations': 'organisations',
+      '/mpuza': 'mpuza',
       '/emergency': 'emergency',
       '/inbox': 'inbox',
       '/groups': 'groups',
@@ -381,7 +381,7 @@ function App() {
         <Route path="/facilitator-inbox" element={<FacilitatorInboxPage />} />
         <Route path="/book-doctor" element={<BookDoctorPage />} />
         <Route path="/baza-muganga" element={<BazaMugangaPage />} />
-        <Route path="/organisations" element={<OrganisationsPage />} />
+        <Route path="/mpuza" element={<MpuzaPage />} />
         <Route path="/emergency" element={<EmergencyPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/groups" element={<GroupsPage />} />

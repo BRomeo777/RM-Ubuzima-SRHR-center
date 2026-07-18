@@ -3247,10 +3247,10 @@ export const usePersistentStore = create<PersistentState>()(
             'Need healthcare nearby? Use our location-based service finder.',
             'Discover trusted healthcare facilities in your area with just a few taps.',
           ],
-          'organisations': [
-            '🤝 Connect with SRHR organizations working in your community.',
-            'Find support groups and organizations dedicated to sexual health.',
-            'Partner organizations are here to support your health journey.',
+          'mpuza': [
+            '🤝 Connect with the right people through Mpuza.',
+            'Find legal aid, family planning, and GBV support.',
+            'Mpuza helps you meet those who can help you.',
           ],
         };
 
