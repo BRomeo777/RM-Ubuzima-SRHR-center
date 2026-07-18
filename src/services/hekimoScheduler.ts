@@ -1,5 +1,5 @@
 import { usePersistentStore } from '../store';
-import { generateHekimoSRHRPost, generateHekimoGeneralPost, getHekimoPersonaInfo } from './hekimoService';
+import { generateHekimoSRHRPost, generateHekimoGeneralPost, getHekimoPersonaInfo, registerPostedContent, isContentAlreadyPosted } from './hekimoService';
 
 // ============================================
 // HEKIMO SCHEDULER
@@ -28,27 +28,27 @@ function getTodayKey(): string {
   return `${kigali.getFullYear()}-${kigali.getMonth() + 1}-${kigali.getDate()}`;
 }
 
-function hasHekimoPostedToday(postType: 'srhr' | 'general'): boolean {
-  const { aiPosts, statusUpdates } = usePersistentStore.getState();
-  const todayKey = getTodayKey();
+// Collect ALL previously posted Hekimo SRHR post contents (not just today)
+function getPreviouslyPostedSRHRContents(): string[] {
+  const { aiPosts } = usePersistentStore.getState();
+  return aiPosts
+    .filter((post) => post.aiType === 'hekimo')
+    .map((post) => post.content)
+    .filter(Boolean);
+}
 
-  if (postType === 'srhr') {
-    return aiPosts.some((post) => {
-      if (post.aiType !== 'hekimo') return false;
-      const postDate = new Date(post.timestamp);
-      const postKigali = new Date(postDate.getTime() + postDate.getTimezoneOffset() * 60000 + KIGALI_OFFSET_HOURS * 3600000);
-      const postKey = `${postKigali.getFullYear()}-${postKigali.getMonth() + 1}-${postKigali.getDate()}`;
-      return postKey === todayKey;
-    });
-  } else {
-    return statusUpdates.some((status) => {
-      if (status.createdBy !== 'hekimo') return false;
-      const statusDate = new Date(status.timestamp);
-      const statusKigali = new Date(statusDate.getTime() + statusDate.getTimezoneOffset() * 60000 + KIGALI_OFFSET_HOURS * 3600000);
-      const statusKey = `${statusKigali.getFullYear()}-${statusKigali.getMonth() + 1}-${statusKigali.getDate()}`;
-      return statusKey === todayKey;
-    });
-  }
+// Collect ALL previously posted Hekimo status contents
+function getPreviouslyPostedStatusContents(): string[] {
+  const { statusUpdates } = usePersistentStore.getState();
+  return statusUpdates
+    .filter((status) => status.createdBy === 'hekimo')
+    .map((status) => status.content)
+    .filter(Boolean);
+}
+
+// Extract a short title-like signature from content for comparison
+function extractTitle(content: string): string {
+  return content.replace(/\n/g, ' ').replace(/References:.*$/s, '').trim().slice(0, 100);
 }
 
 function countHekimoPostsToday(): number {
@@ -66,25 +66,39 @@ function countHekimoPostsToday(): number {
 
 async function postSRHRUpdate(): Promise<void> {
   console.log('[Hekimo] Generating SRHR trending post...');
-  const hekimoPost = await generateHekimoSRHRPost();
+
+  // Get all previously posted titles to avoid repeats
+  const previousContents = getPreviouslyPostedSRHRContents();
+  const previousTitles = previousContents.map(extractTitle);
+
+  // Also register all previous content hashes
+  previousContents.forEach(c => registerPostedContent(c));
+
+  const hekimoPost = await generateHekimoSRHRPost(previousTitles);
 
   if (!hekimoPost) {
-    console.log('[Hekimo] No SRHR content generated, skipping');
+    console.log('[Hekimo] No new SRHR content to post (all already covered or no news)');
+    return;
+  }
+
+  // Final check: make sure this content wasn't already posted
+  if (isContentAlreadyPosted(hekimoPost.content)) {
+    console.log('[Hekimo] Content already posted before, skipping');
     return;
   }
 
   const persona = getHekimoPersonaInfo();
   const { addAIPost, aiAvatars } = usePersistentStore.getState();
 
-  const fullContent = hekimoPost.content;
-
   const referencesText = hekimoPost.references.length > 0
     ? '\n\nReferences:\n' + hekimoPost.references.map((ref) => `• ${ref.title}: ${ref.url}`).join('\n')
     : '';
 
+  const fullContent = hekimoPost.content + referencesText;
+
   const result = await addAIPost({
     aiType: 'hekimo',
-    content: fullContent + referencesText,
+    content: fullContent,
     category: 'srhr-trending',
     isActive: true,
     postLength: 'medium',
@@ -97,6 +111,7 @@ async function postSRHRUpdate(): Promise<void> {
   });
 
   if (result) {
+    registerPostedContent(hekimoPost.content);
     console.log('[Hekimo] SRHR post created successfully:', result.id);
   } else {
     console.error('[Hekimo] Failed to create SRHR post');
@@ -105,10 +120,24 @@ async function postSRHRUpdate(): Promise<void> {
 
 async function postGeneralUpdate(): Promise<void> {
   console.log('[Hekimo] Generating general trending status update...');
-  const hekimoPost = await generateHekimoGeneralPost();
+
+  // Get all previously posted status contents to avoid repeats
+  const previousContents = getPreviouslyPostedStatusContents();
+  const previousTitles = previousContents.map(extractTitle);
+
+  // Also register all previous content hashes
+  previousContents.forEach(c => registerPostedContent(c));
+
+  const hekimoPost = await generateHekimoGeneralPost(previousTitles);
 
   if (!hekimoPost) {
-    console.log('[Hekimo] No general content generated, skipping');
+    console.log('[Hekimo] No new general content to post (all already covered or no news)');
+    return;
+  }
+
+  // Final check: make sure this content wasn't already posted
+  if (isContentAlreadyPosted(hekimoPost.content)) {
+    console.log('[Hekimo] Content already posted before, skipping');
     return;
   }
 
@@ -119,9 +148,11 @@ async function postGeneralUpdate(): Promise<void> {
     ? '\n\nReferences:\n' + hekimoPost.references.map((ref) => `• ${ref.title}: ${ref.url}`).join('\n')
     : '';
 
+  const fullContent = hekimoPost.content + referencesText;
+
   const result = await addStatusUpdate({
     type: 'text',
-    content: hekimoPost.content + referencesText,
+    content: fullContent,
     viewedBy: [],
     createdBy: 'hekimo',
     createdByName: persona.name,
@@ -130,6 +161,7 @@ async function postGeneralUpdate(): Promise<void> {
   });
 
   if (result) {
+    registerPostedContent(hekimoPost.content);
     console.log('[Hekimo] General status update created successfully:', result.id);
   } else {
     console.error('[Hekimo] Failed to create general status update');
@@ -143,31 +175,44 @@ async function checkAndPost(): Promise<void> {
   try {
     const kigaliTime = getKigaliTime();
     const hour = kigaliTime.getHours();
-    const todayKey = getTodayKey();
+    const minute = kigaliTime.getMinutes();
 
-    console.log(`[Hekimo] Check at Kigali time ${kigaliTime.toLocaleString()} (${hour}:00)`);
+    console.log(`[Hekimo] Time check — Kigali ${hour}:${String(minute).padStart(2, '0')}`);
 
-    // 6AM - First SRHR post of the day
-    if (hour >= SRHR_POST_HOUR && hour < SRHR_POST_HOUR + 1) {
-      if (!hasHekimoPostedToday('srhr')) {
+    // 6AM (hour 6) — First SRHR post of the day
+    if (hour === SRHR_POST_HOUR) {
+      const postsToday = countHekimoPostsToday();
+      if (postsToday === 0) {
+        console.log('[Hekimo] 6AM trigger — posting first SRHR update');
         await postSRHRUpdate();
       }
     }
 
-    // Every 5 hours after 6AM (11AM, 4PM) - additional SRHR posts if trending
-    const postsToday = countHekimoPostsToday();
-    const expectedPostsByHour = Math.floor((hour - SRHR_POST_HOUR) / SRHR_INTERVAL_HOURS) + 1;
-
-    if (hour >= SRHR_POST_HOUR + SRHR_INTERVAL_HOURS && hour < GENERAL_POST_HOUR) {
-      if (postsToday < expectedPostsByHour && postsToday < 4) {
-        console.log(`[Hekimo] Due for additional SRHR post (${postsToday} posted, expected ${expectedPostsByHour})`);
+    // 11AM and 4PM (every 5 hours after 6AM) — additional SRHR posts
+    if (hour === SRHR_POST_HOUR + SRHR_INTERVAL_HOURS || hour === SRHR_POST_HOUR + SRHR_INTERVAL_HOURS * 2) {
+      const postsToday = countHekimoPostsToday();
+      const expectedPostsByNow = Math.floor((hour - SRHR_POST_HOUR) / SRHR_INTERVAL_HOURS) + 1;
+      if (postsToday < expectedPostsByNow && postsToday < 4) {
+        console.log(`[Hekimo] ${hour}:00 trigger — posting additional SRHR update (${postsToday} posted, expected ${expectedPostsByNow})`);
         await postSRHRUpdate();
       }
     }
 
-    // 6PM - General (non-SRHR) trending news as status update
-    if (hour >= GENERAL_POST_HOUR && hour < GENERAL_POST_HOUR + 1) {
-      if (!hasHekimoPostedToday('general')) {
+    // 6PM (hour 18) — General (non-SRHR) trending news as status update
+    if (hour === GENERAL_POST_HOUR) {
+      const hasPostedGeneralToday = getPreviouslyPostedStatusContents().some(content => {
+        // Check if posted today
+        const { statusUpdates } = usePersistentStore.getState();
+        return statusUpdates.some(s => {
+          if (s.createdBy !== 'hekimo') return false;
+          const sDate = new Date(s.timestamp);
+          const sKigali = new Date(sDate.getTime() + sDate.getTimezoneOffset() * 60000 + KIGALI_OFFSET_HOURS * 3600000);
+          const sKey = `${sKigali.getFullYear()}-${sKigali.getMonth() + 1}-${sKigali.getDate()}`;
+          return sKey === getTodayKey();
+        });
+      });
+      if (!hasPostedGeneralToday) {
+        console.log('[Hekimo] 6PM trigger — posting general status update');
         await postGeneralUpdate();
       }
     }
@@ -184,15 +229,13 @@ export function startHekimoScheduler(): void {
     return;
   }
 
-  console.log('[Hekimo] Starting scheduler...');
+  console.log('[Hekimo] Starting scheduler — only time-based triggers, no manual posting');
 
-  // Check immediately on start
-  checkAndPost();
-
-  // Check every 15 minutes
+  // Do NOT check immediately on start — only time triggers posting
+  // Check every 10 minutes for precise time-based triggers
   schedulerInterval = setInterval(() => {
     checkAndPost();
-  }, 15 * 60 * 1000);
+  }, 10 * 60 * 1000);
 }
 
 export function stopHekimoScheduler(): void {

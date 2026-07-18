@@ -18,6 +18,22 @@ interface HekimoPost {
   references: { title: string; url: string }[];
 }
 
+// Track previously posted content hashes to never repeat
+const postedContentHashes = new Set<string>();
+
+function hashContent(text: string): string {
+  // Normalize: lowercase, remove extra whitespace, first 200 chars
+  return text.toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
+}
+
+export function registerPostedContent(content: string): void {
+  postedContentHashes.add(hashContent(content));
+}
+
+export function isContentAlreadyPosted(content: string): boolean {
+  return postedContentHashes.has(hashContent(content));
+}
+
 // RSS feeds for SRHR topics
 const SRHR_RSS_FEEDS = [
   'https://news.google.com/rss/search?q=sexual+reproductive+health+rights&hl=en-US&gl=US&ceid=US:en',
@@ -79,41 +95,62 @@ function deduplicateNews(items: NewsItem[]): NewsItem[] {
 
 async function summarizeWithGroq(
   newsItems: NewsItem[],
-  isSRHR: boolean
+  isSRHR: boolean,
+  previouslyPostedTitles: string[] = []
 ): Promise<HekimoPost | null> {
   const { groqApiKey, groqModel } = usePersistentStore.getState();
 
   if (!groqApiKey) {
-    console.error('[Hekimo] No Groq API key configured');
+    console.error('[Hekimo] No Groq API key configured — set it in Admin Panel');
     return null;
   }
 
-  const newsContext = newsItems
-    .slice(0, 10)
+  // Filter out news items whose titles were already posted
+  const postedLower = previouslyPostedTitles.map(t => t.toLowerCase().slice(0, 80));
+  const freshNews = newsItems.filter(item => {
+    const titleKey = item.title.toLowerCase().slice(0, 80);
+    return !postedLower.some(pt => titleKey.includes(pt) || pt.includes(titleKey));
+  });
+
+  if (freshNews.length === 0) {
+    console.log('[Hekimo] All news items already posted, skipping');
+    return null;
+  }
+
+  const newsContext = freshNews
+    .slice(0, 8)
     .map((item, i) => `${i + 1}. ${item.title}\n   Source: ${item.source}\n   Link: ${item.link}\n   Summary: ${item.description}`)
     .join('\n\n');
 
+  const avoidList = previouslyPostedTitles.length > 0
+    ? `\n\nIMPORTANT: Do NOT cover these topics/news that were already posted previously:\n${previouslyPostedTitles.slice(-10).map(t => `- ${t}`).join('\n')}\n\nOnly cover NEW, different news. Never repeat a topic or news item that was already posted.`
+    : '';
+
   const systemPrompt = isSRHR
-    ? `You are Hekimo, an AI that aggregates and summarizes trending Sexual and Reproductive Health and Rights (SRHR) news from across the web and social media. You cover topics like: sexual health, reproductive health, maternal health, pregnancy, child abuse prevention, HIV/AIDS, gender-based violence, teenage pregnancy, family planning, and LGBTQ+ health rights.
+    ? `You are Hekimo, an AI that aggregates and summarizes trending Sexual and Reproductive Health and Rights (SRHR) news. You cover: sexual health, reproductive health, maternal health, pregnancy, child abuse prevention, HIV/AIDS, gender-based violence, teenage pregnancy, family planning.
 
-Your task:
-- Write a concise, factual summary of the most trending and important SRHR news items provided.
-- The summary should be informative but NOT too long — a few sentences per topic.
-- Do NOT include any photos or videos.
-- Include reference links at the end as "References:" with the source name and URL.
-- Be factual and reference real news. Do not invent information.
-- Keep the total response under 500 words.`
-    : `You are Hekimo, an AI that aggregates trending general news from across the web and social media. You cover topics like: world politics, sports (football, World Cup, etc.), technology, entertainment, and breaking news.
+Rules:
+- Write a SHORT, well-formatted summary — 2-3 brief paragraphs maximum.
+- Pick only the TOP 2-3 most important and trending items.
+- Each item: 1-2 sentences only. Be concise.
+- Do NOT include photos or videos.
+- At the end, add "References:" with source name and URL for each item.
+- Be factual. Do not invent information.
+- Keep total response under 250 words.
+- Never repeat news that was already posted before.`
+    : `You are Hekimo, an AI that posts VERY short trending general news updates (non-SRHR). Topics: world politics, sports, technology, breaking news.
 
-Your task:
-- Write a VERY concise summary (just a few words per item, like a headline update) of the most trending non-SRHR news.
-- Keep it short — this is for a 24-hour status update, not a full article.
-- Do NOT include any photos or videos.
-- Include reference links at the end as "References:" with the source name and URL.
-- Be factual and reference real news. Do not invent information.
-- Keep the total response under 200 words.`;
+Rules:
+- Write a VERY SHORT update — like a brief headline summary.
+- Maximum 3-4 short sentences total. This is a 24-hour status, not an article.
+- Pick only the TOP 1-2 most trending items.
+- Do NOT include photos or videos.
+- At the end, add "References:" with source name and URL.
+- Be factual. Do not invent information.
+- Keep total response under 80 words.
+- Never repeat news that was already posted before.`;
 
-  const userPrompt = `Here are the latest trending news items:\n\n${newsContext}\n\nPlease summarize the most important and trending items. Write the summary as a cohesive update. At the end, list the reference links.`;
+  const userPrompt = `Here are the latest trending news items:\n\n${newsContext}${avoidList}\n\nSummarize only the most important NEW items. Be concise. List reference links at the end.`;
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -128,8 +165,8 @@ Your task:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.5,
-        max_tokens: isSRHR ? 800 : 400,
+        temperature: 0.6,
+        max_tokens: isSRHR ? 400 : 150,
       }),
     });
 
@@ -145,10 +182,16 @@ Your task:
       throw new Error('No content generated');
     }
 
-    const references = newsItems.slice(0, 5).map((item) => ({
+    const references = freshNews.slice(0, 3).map((item) => ({
       title: item.source,
       url: item.link,
     }));
+
+    // Double-check: if this exact content was already posted, skip
+    if (isContentAlreadyPosted(content)) {
+      console.log('[Hekimo] Generated content matches a previous post, skipping');
+      return null;
+    }
 
     return { content, references };
   } catch (error) {
@@ -157,7 +200,7 @@ Your task:
   }
 }
 
-export async function generateHekimoSRHRPost(): Promise<HekimoPost | null> {
+export async function generateHekimoSRHRPost(previouslyPostedTitles: string[] = []): Promise<HekimoPost | null> {
   console.log('[Hekimo] Fetching trending SRHR news...');
   const news = deduplicateNews(await fetchAllFeeds(SRHR_RSS_FEEDS));
 
@@ -167,10 +210,10 @@ export async function generateHekimoSRHRPost(): Promise<HekimoPost | null> {
   }
 
   console.log(`[Hekimo] Found ${news.length} SRHR news items, summarizing...`);
-  return summarizeWithGroq(news, true);
+  return summarizeWithGroq(news, true, previouslyPostedTitles);
 }
 
-export async function generateHekimoGeneralPost(): Promise<HekimoPost | null> {
+export async function generateHekimoGeneralPost(previouslyPostedTitles: string[] = []): Promise<HekimoPost | null> {
   console.log('[Hekimo] Fetching trending general news...');
   const news = deduplicateNews(await fetchAllFeeds(GENERAL_RSS_FEEDS));
 
@@ -180,7 +223,7 @@ export async function generateHekimoGeneralPost(): Promise<HekimoPost | null> {
   }
 
   console.log(`[Hekimo] Found ${news.length} general news items, summarizing...`);
-  return summarizeWithGroq(news, false);
+  return summarizeWithGroq(news, false, previouslyPostedTitles);
 }
 
 export function getHekimoPersonaInfo(): { name: string; title: string; color: string; badge: string; initials: string } {

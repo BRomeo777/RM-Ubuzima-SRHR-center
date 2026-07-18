@@ -716,12 +716,19 @@ function AITab({
             </div>
             <h3 className="font-semibold text-cool-900">{ai.name}</h3>
             <p className="text-sm text-cool-500">{ai.title}</p>
-            <button
-              onClick={() => onGenerate(ai.key)}
-              className="mt-3 w-full py-2 bg-srhr/10 text-srhr rounded-lg text-sm font-medium hover:bg-srhr/20 transition-colors"
-            >
-              Generate Post
-            </button>
+            {ai.key !== 'hekimo' && (
+              <button
+                onClick={() => onGenerate(ai.key)}
+                className="mt-3 w-full py-2 bg-srhr/10 text-srhr rounded-lg text-sm font-medium hover:bg-srhr/20 transition-colors"
+              >
+                Generate Post
+              </button>
+            )}
+            {ai.key === 'hekimo' && (
+              <p className="mt-3 text-xs text-cool-400 text-center">
+                Auto-posts at 6AM, 11AM, 4PM (SRHR) &amp; 6PM (General) — Kigali time
+              </p>
+            )}
           </div>
         ))}
       </div>
