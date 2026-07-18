@@ -155,7 +155,7 @@ export default function HomePage() {
         'appointment': 'You can book an online consultation with a SRHR healthcare provider through the "Book SRHR Provider" option.',
         'help': 'I am Ubuzima, your SRHR assistant. I can help you find services, answer questions, or guide you to resources.',
       };
-      const response = responses[question.toLowerCase()] || 'I am here to help with SRHR information and guide you to appropriate services. How can I assist you today?';
+      const response = responses[question.toLowerCase()] || 'I am here to help with SRHR Library and guide you to appropriate services. How can I assist you today?';
       setHelperMessage(response);
     }, 1000);
   };

@@ -6,7 +6,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 const en = {
   common: {
     home: 'Home',
-    srhrInfo: 'SRHR Info',
+    srhrInfo: 'SRHR Library',
     findService: 'Find Service',
     services: 'Services',
     settings: 'Settings',
@@ -44,7 +44,7 @@ const en = {
     randomName: 'Generate random name',
     rememberMe: 'Remember me (7 days)',
     welcomeTitle: 'RM Ubuzima',
-    welcomeSubtitle: 'Your privacy-first SRHR information platform',
+    welcomeSubtitle: 'Your privacy-first SRHR Library platform',
     privacyNote: 'No email, no phone, no tracking. Complete anonymity.',
     decoyHint: 'Press Ctrl+B anytime for decoy mode',
   },
@@ -79,7 +79,7 @@ const en = {
   srhr: {
     topics: 'Topics',
     articles: 'Articles',
-    searchPlaceholder: 'Search SRHR information...',
+    searchPlaceholder: 'Search SRHR Library...',
     noArticles: 'No articles in this topic yet',
     readMore: 'Read more',
     images: 'Images',
@@ -425,7 +425,7 @@ const en = {
 const rw = {
   common: {
     home: 'Ahabanza',
-    srhrInfo: 'Amakuru ya SRHR',
+    srhrInfo: 'Isomero ya SRHR',
     findService: 'Bona Serivisi',
     services: 'Serivisi',
     settings: 'Igenamiterere',
@@ -768,7 +768,7 @@ const rw = {
 const fr = {
   common: {
     home: 'Accueil',
-    srhrInfo: 'Info SSRA',
+    srhrInfo: 'Bibliothèque SSRA',
     findService: 'Trouver un Service',
     services: 'Services',
     settings: 'Paramètres',
@@ -1061,7 +1061,7 @@ const fr = {
 const sw = {
   common: {
     home: 'Nyumbani',
-    srhrInfo: 'Habari za SRHR',
+    srhrInfo: 'Maktaba ya SRHR',
     findService: 'Tafuta Huduma',
     services: 'Huduma',
     settings: 'Mipangilio',

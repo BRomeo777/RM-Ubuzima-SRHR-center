@@ -122,7 +122,7 @@ export function getScheduleForAI(aiType: AIType): string {
 
 export async function generateWelcomeMessage(language: Language): Promise<string> {
   const messages: Record<Language, string> = {
-    en: "Welcome to RM Ubuzima! Your privacy is our priority. Explore AI-powered SRHR information, find nearby services, and join our weekly discussions. You're not alone on this journey.",
+    en: "Welcome to RM Ubuzima! Your privacy is our priority. Explore AI-powered SRHR Library, find nearby services, and join our weekly discussions. You're not alone on this journey.",
     rw: "Ikaze muri RM Ubuzima! Ubuzima bwawe ni ingenzi. Menya amakuru y'ubuzima, bona serivisi hafi, kandi uduhurire mu biganiro byacu bya buri cyumweru. Nti wijeje.",
     fr: "Bienvenue sur RM Ubuzima! Votre confidentialité est notre priorité. Explorez les informations SSRA, trouvez des services proches et rejoignez nos discussions hebdomadaires. Vous n'êtes pas seul.",
     sw: "Karibu RM Ubuzima! Faragha yako ni kipaumbele chetu. Chunguza habari za afya ya uzazi, pata huduma za karibu, na jiunge na mijadala yetu ya wiki. Huko peke yako.",

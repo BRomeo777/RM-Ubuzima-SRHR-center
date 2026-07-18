@@ -509,7 +509,7 @@ const getDefaultHelpContent = (): HelpCenterContent => ({
       questionKinyarwanda: 'Nakoresha imenyekanisha gute?',
       questionFrench: 'Comment activer les notifications?',
       questionSwahili: 'Jinsi ya kuwasha arifa?',
-      answer: 'Go to Settings and toggle the Notifications option. You will receive important updates about SRHR information, emergency alerts, and community announcements when enabled. You can disable them at any time.',
+      answer: 'Go to Settings and toggle the Notifications option. You will receive important updates about SRHR Library, emergency alerts, and community announcements when enabled. You can disable them at any time.',
       answerKinyarwanda: 'Jya mu Igenamiterere uhitemo Imenyekanisha. Uzamenyekanishwa ku makuru y\'ubuzima, imenyesha za biza, n\'amatangazo y\'abaturage igihe byakoreshwa. Urashobora kuyahagarika igihe cyose.',
       answerFrench: 'Allez dans Paramètres et activez l\'option Notifications. Vous recevrez des mises à jour importantes sur les informations de santé sexuelle et reproductive, des alertes d\'urgence et des annonces communautaires lorsque activé. Vous pouvez les désactiver à tout moment.',
       answerSwahili: 'Nenda kwenye Mipangilio na washa chaguo la Arifa. Utapokea visasisho muhimu kuhusu habari za SRHR, tahadhari za dharura, na tangazo za jamii zinapowashwa. Unaweza kuzima wakati wowote.',
@@ -545,7 +545,7 @@ const getDefaultHelpContent = (): HelpCenterContent => ({
       questionKinyarwanda: 'Nshobora kuganira na muganga wa muderi?',
       questionFrench: 'Puis-je parler à un médecin IA?',
       questionSwahili: 'Ninaweza kuzungumza na daktari wa AI?',
-      answer: 'Yes! Our AI assistants are available 24/7 to provide SRHR information and guidance for educational purposes. They can answer questions about sexual health, reproductive health, and general wellness. Remember that AI advice is for educational purposes only and NOT a substitute for professional medical care. Always consult a qualified healthcare provider for medical concerns.',
+      answer: 'Yes! Our AI assistants are available 24/7 to provide SRHR Library and guidance for educational purposes. They can answer questions about sexual health, reproductive health, and general wellness. Remember that AI advice is for educational purposes only and NOT a substitute for professional medical care. Always consult a qualified healthcare provider for medical concerns.',
       answerKinyarwanda: 'Yego! Abafasha bacu b\'imashini bafite 24/7 kugirango batange amakuru ya SRHR n\'ubuyobozi kugihe cy\'amahugurwa. Bashobora gusubiza ibibazo bijyanye n\'ubuzima bw\'imyororokere, ubuzima bw\'imbyara, n\'ubuzima rusange. Ibuka ko inama za muderi ni kugirango amahugurwa gusa KANDI SI inama zo kubagara. Buri gihe usabe umuhanga w\'ubuzima wemewe kubagara ku bibazo by\'ubuzima.',
       answerFrench: 'Oui! Nos assistants IA sont disponibles 24h/24 et 7j/7 pour fournir des informations et des conseils sur la santé sexuelle et reproductive à des fins éducatives. Ils peuvent répondre aux questions sur la santé sexuelle, la santé reproductive et le bien-être général. N\'oubliez pas que les conseils de l\'IA sont uniquement à des fins éducatives et NE remplacent PAS les soins médicaux professionnels. Consultez toujours un professionnel de santé qualifié pour les problèmes médicaux.',
       answerSwahili: 'Ndiyo! Wasaidizi wetu wa AI wanapatikana 24/7 kutoa habari na mwongozo wa SRHR kwa madhumuni ya elimu. Wanaweza kujibu maswali kuhusu afya ya ngono, afya ya uzazi, na ustawi wa jumla. Kumbuka kwamba ushauri wa AI ni kwa madhumuni ya elimu pekee na SIO mbadala wa huduma za matibabu za kitaalamu. Washauri daima mtoa huduma wa afya aliye na sifa kwa masuala ya matibabu.',
@@ -602,7 +602,7 @@ const getDefaultHelpContent = (): HelpCenterContent => ({
       descriptionSwahili: 'Jifunze misingi ya kutumia RM Ubuzima',
       steps: [
         'Create your anonymous profile with an avatar',
-        'Explore the Daily Feed for SRHR information',
+        'Explore the Daily Feed for SRHR Library',
         'Use the menu to find services and resources',
         'Enable notifications for important updates',
         'Use Decoy Mode (Ctrl+B) for privacy when needed',
@@ -2590,7 +2590,7 @@ export const usePersistentStore = create<PersistentState>()(
             announcements.push({
               id: generateId(),
               title: '📢 ANNOUNCEMENT: Platform Updates',
-              content: `RM Ubuzima has been updated with new features and improvements to better serve your SRHR information needs.`,
+              content: `RM Ubuzima has been updated with new features and improvements to better serve your SRHR Library needs.`,
               fullContent: `OFFICIAL ANNOUNCEMENT${rmAdminSignature}\n\nPlatform Update Notice\n\nWe have implemented updates to enhance your experience:\n\n• Improved notification system\n• Enhanced privacy features\n• New SRHR resources added\n• Performance improvements\n\nIf you experience any issues, please contact support. We remain committed to providing a secure, professional platform for sexual and reproductive health information.`,
               type: 'system',
               priority: 'low',
@@ -2975,7 +2975,7 @@ export const usePersistentStore = create<PersistentState>()(
         // 3. BOOKMARK/FAVORITE REMINDER
         const messages = [
           'Bookmark articles you find useful to read them again later!',
-          'SRHR information is constantly updated. Check back regularly for new content!',
+          'SRHR Library is constantly updated. Check back regularly for new content!',
           'Have questions about what you read? Click on me to chat with RM Admin AI!',
         ];
         for (const message of messages) {

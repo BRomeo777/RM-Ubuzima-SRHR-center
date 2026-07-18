@@ -1080,7 +1080,7 @@ function LandingPage({ onEnterApp }: { onEnterApp: () => void }) {
                     Daily Updates
                   </span>
                   <p className="text-gray-600 text-sm leading-relaxed">
-                    Stay updated with daily health news, tips, and SRHR information curated by experts.
+                    Stay updated with daily health news, tips, and SRHR Library curated by experts.
                   </p>
                 </div>
               </div>

@@ -2444,10 +2444,10 @@ export async function processGroupMessageForAIMention(
  */
 function getGroupFallbackResponse(language: Language): string {
   const fallbacks: Record<Language, string> = {
-    en: "👋 Hi! I'm RM Admin AI. I'm here to help you navigate the app!\n\nI can help you find:\n• SRHR Info section for health education\n• Book a Doctor for appointments\n• Services to find nearby facilities\n• Emergency section for urgent help\n• Community chat to connect with others\n\nJust let me know what you're looking for!",
+    en: "👋 Hi! I'm RM Admin AI. I'm here to help you navigate the app!\n\nI can help you find:\n• SRHR Library section for health education\n• Book a Doctor for appointments\n• Services to find nearby facilities\n• Emergency section for urgent help\n• Community chat to connect with others\n\nJust let me know what you're looking for!",
     rw: "👋 Muraho! Ndi RM Admin AI. Ndi hano kugufasha gushaka serivisi mu porogaramu!\n\nNshobora kugufasha kubona:\n• Amakuru ya SRHR\n• Gusaba Muganga\n• Serivisi z'aho uri\n• Ibiza (Emergency)\n• Chat y'abanyamuryango\n\nUmbwize icyo ushaka!",
     fr: "👋 Bonjour! Je suis RM Admin AI. Je suis là pour vous aider à naviguer dans l'application!\n\nJe peux vous aider à trouver:\n• Section Info SSRA pour l'éducation santé\n• Prendre RDV Médecin\n• Services près de chez vous\n• Section Urgence\n• Chat communautaire\n\nDites-moi ce que vous cherchez!",
-    sw: "👋 Habari! Mimi ni RM Admin AI. Nipo kusaidia kuzunguka programu!\n\nNaweza kusaidia kupata:\n• Sehemu ya SRHR Info\n• Weka Miadi na Daktari\n• Huduma za karibu\n• Sehemu ya Dharura\n• Chat ya jamii\n\nNionyeshe unachotafuta!"
+    sw: "👋 Habari! Mimi ni RM Admin AI. Nipo kusaidia kuzunguka programu!\n\nNaweza kusaidia kupata:\n• Sehemu ya SRHR Library\n• Weka Miadi na Daktari\n• Huduma za karibu\n• Sehemu ya Dharura\n• Chat ya jamii\n\nNionyeshe unachotafuta!"
   };
   
   return fallbacks[language] || fallbacks.en;
