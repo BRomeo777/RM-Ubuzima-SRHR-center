@@ -249,10 +249,15 @@ function App() {
         e.preventDefault();
         useEphemeralStore.getState().toggleDecoyMode();
       }
+      // Ctrl+M — hidden admin panel access
+      if (e.ctrlKey && e.key === 'm') {
+        e.preventDefault();
+        navigate('/admin');
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [navigate]);
 
   // ============================================
   // RENDER HELPERS

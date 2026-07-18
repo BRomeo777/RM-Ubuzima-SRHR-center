@@ -32,8 +32,6 @@ export default function SettingsPage() {
   const {
     language,
     setLanguage,
-    isAdminLoggedIn,
-    setAdminLoggedIn,
     notificationsEnabled,
     setNotificationsEnabled,
     darkModeEnabled,
@@ -64,7 +62,6 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
-    setAdminLoggedIn(false);
     endSession();
     setSavedUser(null); // CRITICAL: Clear persistent user to prevent auto-restore
     navigate('/auth', { replace: true }); // Use replace to prevent back navigation to logged-in state
@@ -283,26 +280,6 @@ export default function SettingsPage() {
               </div>
               <ChevronRight className="w-4 h-4 text-cool-400" />
             </Link>
-
-            {/* Admin Panel */}
-            <section className="bg-gradient-to-r from-srhr to-srhr-dark rounded-xl shadow-soft overflow-hidden m-2">
-              <Link to="/admin" className="block p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                      <Shield className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-white">Admin Panel</p>
-                      <p className="text-xs text-cool-100">
-                        {isAdminLoggedIn ? 'Logged in' : 'Manage platform settings'}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-white/70" />
-                </div>
-              </Link>
-            </section>
 
             {/* Facilitator Panel */}
             <section className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl shadow-soft overflow-hidden m-2 mt-2">
