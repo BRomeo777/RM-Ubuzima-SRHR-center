@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Save RM Ubuzima Logo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a2e;
+      color: white;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 { color: #2A9D8F; }
+    .logo-container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      display: inline-block;
+      margin: 20px 0;
+    }
+    img {
+      max-width: 500px;
+      height: auto;
+    }
+    .instructions {
+      background: #16213e;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 30px;
+      text-align: left;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .instructions ol {
+      line-height: 2;
+    }
+    .instructions code {
+      background: #2A9D8F;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    button {
+      background: #2A9D8F;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #1D7A6E;
+    }
+  </style>
+</head>
+<body>
+  <h1>📥 Save Your Logo</h1>
+  <p>This is your RM Ubuzima logo. Save it as logo.png</p>
+  
+  <div class="logo-container">
+    <!-- Logo image - Right-click and save -->
+    <img id="logo" src="" alt="RM Ubuzima Logo" />
+  </div>
+
+  <div>
+    <button onclick="downloadLogo()">⬇️ Download Logo (auto-save)</button>
+  </div>
+
+  <div class="instructions">
+    <h3>📋 How to Save:</h3>
+    <ol>
+      <li>Click the <strong>"Download Logo"</strong> button above</li>
+      <li>If that doesn't work: <strong>Right-click</strong> on the logo image</li>
+      <li>Select <strong>"Save Image As..."</strong></li>
+      <li>Navigate to: <code>rm-ubuzima\public\</code></li>
+      <li>Filename: <code>logo.png</code></li>
+      <li>Click <strong>Save</strong></li>
+    </ol>
+  </div>
+
+  <script>
+    // Try to load logo from various sources
+    const logoSources = [
+      '/logo.png',  // If already saved
+      './logo.png',
+      'logo.png',
+    ];
+    
+    const img = document.getElementById('logo');
+    let currentSource = 0;
+    
+    function tryNextSource() {
+      if (currentSource < logoSources.length) {
+        img.src = logoSources[currentSource];
+        currentSource++;
+      }
+    }
+    
+    img.onerror = tryNextSource;
+    tryNextSource();
+
+    // Auto-download attempt
+    function downloadLogo() {
+      // Create a canvas to draw the logo
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      
+      // Fill white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // Draw the current image
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, 0, 0, 512, 512);
+        
+        // Download
+        const link = document.createElement('a');
+        link.download = 'logo.png';
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        alert('✓ Logo downloaded! Now move it to: rm-ubuzima\\public\\logo.png');
+      } else {
+        alert('Logo not loaded yet. Please right-click the image and save manually.');
+      }
+    }
+    
+    // If image loads successfully from a source, we're good
+    img.onload = function() {
+      console.log('Logo loaded from:', img.src);
+    };
+  </script>
+</body>
+</html>

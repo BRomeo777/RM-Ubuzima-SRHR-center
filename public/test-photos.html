@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Photos</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .photo { margin: 20px 0; border: 2px solid #ccc; padding: 10px; }
+    .photo img { max-width: 100%; height: auto; display: block; }
+    .error { color: red; }
+    .success { color: green; }
+  </style>
+</head>
+<body>
+  <h1>Photo Test - Check if images load</h1>
+  
+  <div class="photo">
+    <p>Photo 1:</p>
+    <img src="/landing-photos/hero-1.jpg" onerror="this.parentElement.classList.add('error'); this.parentElement.innerHTML += '<p class=error>FAILED TO LOAD</p>'" onload="this.parentElement.classList.add('success'); this.parentElement.innerHTML += '<p class=success>LOADED OK</p>'">
+  </div>
+  
+  <div class="photo">
+    <p>Photo 2:</p>
+    <img src="/landing-photos/hero-2.jpg" onerror="this.parentElement.classList.add('error'); this.parentElement.innerHTML += '<p class=error>FAILED TO LOAD</p>'" onload="this.parentElement.classList.add('success'); this.parentElement.innerHTML += '<p class=success>LOADED OK</p>'">
+  </div>
+  
+  <div class="photo">
+    <p>Photo 3:</p>
+    <img src="/landing-photos/hero-3.jpg" onerror="this.parentElement.classList.add('error'); this.parentElement.innerHTML += '<p class=error>FAILED TO LOAD</p>'" onload="this.parentElement.classList.add('success'); this.parentElement.innerHTML += '<p class=success>LOADED OK</p>'">
+  </div>
+  
+  <div class="photo">
+    <p>Photo 4:</p>
+    <img src="/landing-photos/hero-4.jpg" onerror="this.parentElement.classList.add('error'); this.parentElement.innerHTML += '<p class=error>FAILED TO LOAD</p>'" onload="this.parentElement.classList.add('success'); this.parentElement.innerHTML += '<p class=success>LOADED OK</p>'">
+  </div>
+  
+  <p><strong>Open browser console (F12) to see any network errors</strong></p>
+</body>
+</html>

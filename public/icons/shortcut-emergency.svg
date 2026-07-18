@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="sosBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DC2626"/>
+      <stop offset="100%" style="stop-color:#991B1B"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="20" fill="url(#sosBg)"/>
+  <g transform="translate(48, 48)">
+    <!-- SOS cross -->
+    <rect x="-6" y="-20" width="12" height="40" rx="2" fill="#FFFFFF"/>
+    <rect x="-20" y="-6" width="40" height="12" rx="2" fill="#FFFFFF"/>
+    <!-- Heart -->
+    <path d="M-8,18 C-14,12 -16,18 -10,24 L0,32 L10,24 C16,18 14,12 8,18 C4,22 2,24 0,26 C-2,24 -4,22 -8,18 Z" fill="#FCA5A5" transform="translate(0, -2) scale(0.5)"/>
+  </g>
+</svg>

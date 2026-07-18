@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Download RM Ubuzima Logo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      text-align: center;
+      padding: 60px 20px;
+      min-height: 100vh;
+    }
+    h1 { 
+      color: #2A9D8F; 
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 40px;
+    }
+    .logo-box {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      display: inline-block;
+      margin: 20px auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    #logo {
+      max-width: 400px;
+      max-height: 400px;
+      display: block;
+    }
+    .status {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .status.loading {
+      background: #f59e0b;
+      color: #1a1a2e;
+    }
+    .status.ready {
+      background: #10b981;
+      color: white;
+    }
+    .status.error {
+      background: #ef4444;
+      color: white;
+    }
+    .btn {
+      background: #2A9D8F;
+      color: white;
+      border: none;
+      padding: 20px 50px;
+      font-size: 20px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      margin: 20px 10px;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn:hover {
+      background: #1D7A6E;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(42,157,143,0.3);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .info {
+      background: rgba(42,157,143,0.1);
+      border: 1px solid rgba(42,157,143,0.3);
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 40px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+    .info h3 {
+      color: #2A9D8F;
+      margin-top: 0;
+    }
+    .info ol {
+      line-height: 2;
+      color: #ccc;
+    }
+    .info code {
+      background: rgba(255,255,255,0.1);
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: #2A9D8F;
+    }
+    .file-size {
+      color: #2A9D8F;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <h1>📥 Download RM Ubuzima Logo</h1>
+  <p class="subtitle">Full quality, no compression</p>
+  
+  <div class="logo-box">
+    <img id="logo" src="" alt="Loading logo..." />
+  </div>
+
+  <div id="status" class="status loading">⏳ Loading logo from GitHub...</div>
+
+  <div>
+    <button id="downloadBtn" class="btn" onclick="downloadLogo()" disabled>
+      ⬇️ Download logo.png
+    </button>
+    <button id="verifyBtn" class="btn" onclick="verifyLocation()" style="background: #3b82f6;">
+      ✅ Verify File Location
+    </button>
+  </div>
+
+  <div id="fileInfo" style="margin-top: 20px; color: #888;"></div>
+
+  <div class="info">
+    <h3>📋 Next Steps:</h3>
+    <ol>
+      <li>Click <strong>"Download logo.png"</strong> button above</li>
+      <li>File will save to your <strong>Downloads</strong> folder</li>
+      <li>Move the file to your project:</li>
+      <li>Location: <code>C:\Users\USER\CascadeProjects\rm-ubuzima\public\logo.png</code></li>
+      <li>Or simply drag from Downloads to your project folder</li>
+    </ol>
+    <p style="color: #2A9D8F; margin-top: 20px;">
+      ✅ Quality: <span id="quality">Original - No compression</span><br>
+      📁 Format: PNG with transparency
+    </p>
+  </div>
+
+  <script>
+    // GitHub raw URL for your logo (using the actual filename on GitHub)
+    const GITHUB_LOGO_URL = 'https://raw.githubusercontent.com/BRomeo777/RM-Ubuzima-/main/public/Screenshot%202026-04-05%20075356.png';
+    let logoBlob = null;
+    let logoSize = 0;
+
+    // Load logo from GitHub
+    async function loadLogo() {
+      const status = document.getElementById('status');
+      const img = document.getElementById('logo');
+      const btn = document.getElementById('downloadBtn');
+      
+      try {
+        // Fetch the image
+        const response = await fetch(GITHUB_LOGO_URL);
+        
+        if (!response.ok) {
+          throw new Error('Failed to load from GitHub');
+        }
+        
+        // Get as blob (binary data)
+        logoBlob = await response.blob();
+        logoSize = logoBlob.size;
+        
+        // Create URL for display
+        const blobUrl = URL.createObjectURL(logoBlob);
+        img.src = blobUrl;
+        
+        // Update UI
+        img.onload = () => {
+          status.className = 'status ready';
+          status.textContent = '✅ Logo loaded at full quality!';
+          btn.disabled = false;
+          
+          // Show file size
+          const sizeKB = (logoSize / 1024).toFixed(1);
+          document.getElementById('fileInfo').innerHTML = 
+            `File size: <span class="file-size">${sizeKB} KB</span> (Original quality)`;
+        };
+        
+      } catch (error) {
+        status.className = 'status error';
+        status.textContent = '❌ Error loading logo. Try refreshing the page.';
+        console.error(error);
+      }
+    }
+
+    // Download the logo
+    function downloadLogo() {
+      if (!logoBlob) return;
+      
+      const url = URL.createObjectURL(logoBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'logo.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+      
+      alert('✅ logo.png downloaded!\n\nNow move it to:\nrm-ubuzima\\public\\logo.png');
+    }
+
+    // Verify file location
+    function verifyLocation() {
+      const paths = [
+        'C:\\Users\\USER\\CascadeProjects\\rm-ubuzima\\public\\logo.png',
+        'C:/Users/USER/CascadeProjects/rm-ubuzima/public/logo.png'
+      ];
+      
+      alert('After downloading, move logo.png to:\n\n' + paths[0] + '\n\nThen verify by running:\ndir "' + paths[0] + '"');
+    }
+
+    // Load on page start
+    loadLogo();
+  </script>
+</body>
+</html>

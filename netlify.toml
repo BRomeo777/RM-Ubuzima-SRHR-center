@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# IMPORTANT: Specific routes MUST come before wildcard
+# Firebase Auth Action Handler
+[[redirects]]
+  from = "/__/auth/action"
+  to = "/index.html"
+  status = 200
+  force = true
+
+# SPA Fallback (must be LAST)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

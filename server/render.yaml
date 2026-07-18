@@ -1,0 +1,26 @@
+# Render.com deployment configuration
+# This file tells Render how to deploy your app
+
+# Static Site (Frontend)
+services:
+  - type: web
+    name: rm-ubuzima-frontend
+    runtime: static
+    buildCommand: cd .. && npm install && npm run build
+    staticPublishPath: ../dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+
+  # Backend Server (Node.js)
+  - type: web
+    name: rm-ubuzima-server
+    runtime: node
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: GROQ_API_KEY
+        sync: false  # You must set this manually in Render dashboard

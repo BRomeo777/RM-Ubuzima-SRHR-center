@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // TEMPORARY: Allow all access for debugging
+    // Change back to restrictive rules after fixing the issue
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

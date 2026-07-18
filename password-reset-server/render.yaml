@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: rm-ubuzima-password-reset
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: BREVO_API_KEY
+        value: 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
+      - key: FROM_EMAIL
+        value: rmubuzima@gmail.com
+      - key: FROM_NAME
+        value: RM Ubuzima
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false  # Set this manually in Render dashboard

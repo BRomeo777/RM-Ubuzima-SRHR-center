@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="aiBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2A9D8F"/>
+      <stop offset="100%" style="stop-color:#0F766E"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="20" fill="url(#aiBg)"/>
+  <g transform="translate(48, 48)">
+    <!-- Robot/AI head -->
+    <rect x="-20" y="-22" width="40" height="36" rx="8" fill="#FFFFFF"/>
+    <!-- Eyes -->
+    <circle cx="-10" cy="-8" r="5" fill="#2A9D8F"/>
+    <circle cx="10" cy="-8" r="5" fill="#2A9D8F"/>
+    <!-- Mouth -->
+    <rect x="-8" y="4" width="16" height="3" rx="1.5" fill="#2A9D8F"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-22" x2="0" y2="-32" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="-36" r="4" fill="#5FC8BA"/>
+    <!-- Heart -->
+    <path d="M-4,18 C-8,14 -10,10 -6,6 C-4,4 -2,6 0,10 C2,6 4,4 6,6 C10,10 8,14 4,18 C2,20 0,22 0,22 C0,22 -2,20 -4,18 Z" fill="#5FC8BA"/>
+  </g>
+</svg>

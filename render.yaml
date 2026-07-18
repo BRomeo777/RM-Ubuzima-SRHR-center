@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: rm-ubuzima
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_FIREBASE_API_KEY
+        value: AIzaSyDUMKBF-K4XdoXAmfYtqHg9UxmsA4UaYLM
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        value: rm-ubuzima.firebaseapp.com
+      - key: VITE_FIREBASE_PROJECT_ID
+        value: rm-ubuzima
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        value: rm-ubuzima.firebasestorage.app
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        value: 935318519650
+      - key: VITE_FIREBASE_APP_ID
+        value: 1:935318519650:web:e92ce2f1dcb8cdde50363b

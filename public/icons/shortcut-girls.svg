@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="girlsBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EC4899"/>
+      <stop offset="100%" style="stop-color:#BE185D"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="20" fill="url(#girlsBg)"/>
+  <g transform="translate(48, 48)">
+    <!-- Shield background -->
+    <path d="M0,-35 C-25,-25 -40,-5 -40,15 C-40,40 -20,60 0,70 C20,60 40,40 40,15 C40,-5 25,-25 0,-35 Z" fill="#FFFFFF" opacity="0.2"/>
+    <!-- Female symbol -->
+    <circle cx="0" cy="-10" r="16" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <line x1="0" y1="6" x2="0" y2="28" stroke="#FFFFFF" stroke-width="4"/>
+    <line x1="-11" y1="17" x2="11" y2="17" stroke="#FFFFFF" stroke-width="4"/>
+    <!-- Heart accent -->
+    <path d="M18,25 C14,21 12,25 16,29 L22,35 L28,29 C32,25 30,21 26,25 C24,27 23,28 22,29 C21,28 20,27 18,25 Z" fill="#FBCFE8" transform="translate(8, 5) scale(0.4)"/>
+  </g>
+</svg>
