@@ -687,6 +687,7 @@ function AITab({
 }) {
   const aiPersonas = [
     { key: 'ubuzima-admin' as AIType, name: 'RM Admin', title: 'Community Guide', color: 'bg-slate-700' },
+    { key: 'hekimo' as AIType, name: 'Hekimo', title: 'SRHR News AI', color: 'bg-emerald-700' },
   ] as const;
 
   return (
@@ -2848,13 +2849,15 @@ function AIAvatarsGrid({
   onSetAIAvatar: (aiType: AIType, avatar: string | null) => void;
   showSuccess?: (msg: string) => void;
 }) {
-  const aiTypes: AIType[] = ['ubuzima-admin'];
+  const aiTypes: AIType[] = ['ubuzima-admin', 'hekimo'];
   const aiNames: Record<AIType, string> = {
     'ubuzima-admin': 'RM Admin',
+    'hekimo': 'Hekimo',
   };
 
   const [uploading, setUploading] = useState<Record<AIType, boolean>>({
     'ubuzima-admin': false,
+    'hekimo': false,
   });
 
   const handleCustomUpload = async (aiType: AIType, file: File) => {

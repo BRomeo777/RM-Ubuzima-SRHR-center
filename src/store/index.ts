@@ -676,6 +676,7 @@ const getDefaultHelpContent = (): HelpCenterContent => ({
 
 const defaultAIConfigs: Record<AIType, AIConfig> = {
   'ubuzima-admin': { enabled: true, schedule: '0 9 * * 1', lastGenerated: null },
+  'hekimo': { enabled: true, schedule: '0 6 * * *', lastGenerated: null },
 };
 
 export const usePersistentStore = create<PersistentState>()(

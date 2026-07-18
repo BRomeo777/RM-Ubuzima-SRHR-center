@@ -639,19 +639,23 @@ function AIPostCard({
 
   // Check if this is a facilitator-created post
   const isFacilitatorPost = post.createdByName && (post.category === 'facilitator' || post.category === 'news');
+  const isHekimoPost = post.aiType === 'hekimo';
 
   // Get AI name based on aiType
   const getAIName = (aiType: string) => {
+    if (aiType === 'hekimo') return 'Hekimo';
     return 'RM Admin';
   };
 
   // Get AI initials for fallback avatar
   const getAIInitials = (aiType: string) => {
+    if (aiType === 'hekimo') return 'He';
     return 'RA';
   };
 
   // Get AI color for fallback avatar
   const getAIColor = (aiType: string) => {
+    if (aiType === 'hekimo') return 'bg-emerald-700';
     return 'bg-slate-700';
   };
 
@@ -662,7 +666,7 @@ function AIPostCard({
     ? (post.createdByName?.charAt(0).toUpperCase() || 'F')
     : getAIInitials(post.aiType);
   const displayColor = isFacilitatorPost ? 'bg-purple-500' : getAIColor(post.aiType);
-  const displayBadge = isFacilitatorPost ? post.createdByBadge : null;
+  const displayBadge = isFacilitatorPost ? post.createdByBadge : (isHekimoPost ? 'Hekimo' : null);
   
   // Determine who to follow (AI or facilitator)
   const followingId = isFacilitatorPost ? post.createdBy : post.aiType;
@@ -730,11 +734,17 @@ function AIPostCard({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
+            {/* Hekimo Updates Label */}
+            {isHekimoPost && (
+              <div className="mb-2">
+                <span className="hekimo-updates-label">Updates</span>
+              </div>
+            )}
             {/* Author - Facilitator or AI Name with Badge */}
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="font-semibold text-cool-900 text-sm">{displayName}</span>
               {displayBadge && (
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
+                <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${isHekimoPost ? 'bg-emerald-100 text-emerald-700' : 'bg-purple-100 text-purple-700'}`}>
                   {displayBadge}
                 </span>
               )}
@@ -927,16 +937,20 @@ function ExpandedPostHeader({ post }: { post: AIPost }) {
   
   // Check if this is a facilitator-created post
   const isFacilitatorPost = post.createdByName && (post.category === 'facilitator' || post.category === 'news');
-  
+  const isHekimoPost = post.aiType === 'hekimo';
+
   const getAIName = (aiType: string) => {
+    if (aiType === 'hekimo') return 'Hekimo';
     return 'RM Admin';
   };
 
   const getAIInitials = (aiType: string) => {
+    if (aiType === 'hekimo') return 'He';
     return 'RA';
   };
 
   const getAIColor = (aiType: string) => {
+    if (aiType === 'hekimo') return 'bg-emerald-700';
     return 'bg-slate-700';
   };
   
@@ -947,7 +961,7 @@ function ExpandedPostHeader({ post }: { post: AIPost }) {
     ? (post.createdByName?.charAt(0).toUpperCase() || 'F')
     : getAIInitials(post.aiType);
   const displayColor = isFacilitatorPost ? 'bg-purple-500' : getAIColor(post.aiType);
-  const displayBadge = isFacilitatorPost ? post.createdByBadge : null;
+  const displayBadge = isFacilitatorPost ? post.createdByBadge : (isHekimoPost ? 'Hekimo' : null);
   
   return (
     <div className="flex items-center gap-3">
@@ -966,7 +980,7 @@ function ExpandedPostHeader({ post }: { post: AIPost }) {
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="font-bold text-cool-900">{displayName}</h3>
           {displayBadge && (
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
+            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${isHekimoPost ? 'bg-emerald-100 text-emerald-700' : 'bg-purple-100 text-purple-700'}`}>
               {displayBadge}
             </span>
           )}

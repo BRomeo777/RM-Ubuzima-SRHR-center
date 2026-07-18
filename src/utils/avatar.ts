@@ -72,7 +72,8 @@ export const getRandomAvatar = (): string => {
  * Get default AI avatars for each AI type (only ubuzima-admin remains)
  */
 export const getDefaultAIAvatars = (): Record<string, string> => ({
-  'ubuzima-admin': LOCAL_AVATAR_PATHS[0]
+  'ubuzima-admin': LOCAL_AVATAR_PATHS[0],
+  'hekimo': LOCAL_AVATAR_PATHS[5]
 });
 
 /**

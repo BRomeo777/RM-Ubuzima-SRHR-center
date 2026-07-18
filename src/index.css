@@ -883,3 +883,17 @@ button, a {
     animation: none;
   }
 }
+
+/* ============================================
+   HEKIMO - Updates Label
+   Dark green, Algerian font style
+   ============================================ */
+.hekimo-updates-label {
+  font-family: 'Algerian', 'Algerian Regular', 'Castellar', 'Playfair Display', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #064e3b;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: inline-block;
+}

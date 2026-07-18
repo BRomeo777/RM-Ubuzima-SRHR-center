@@ -37,6 +37,9 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import AuthActionPage from './pages/AuthActionPage';
 
+// Services
+import { startHekimoScheduler, stopHekimoScheduler } from './services/hekimoScheduler';
+
 // ============================================
 // MAIN APP COMPONENT - TRADITIONAL NAVIGATION
 // ============================================
@@ -258,6 +261,15 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigate]);
+
+  // ============================================
+  // HEKIMO AI SCHEDULER
+  // Auto-posts trending SRHR news at 6AM + every 5h, general news at 6PM Kigali time
+  // ============================================
+  useEffect(() => {
+    startHekimoScheduler();
+    return () => stopHekimoScheduler();
+  }, []);
 
   // ============================================
   // RENDER HELPERS

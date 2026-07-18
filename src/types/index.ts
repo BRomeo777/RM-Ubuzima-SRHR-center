@@ -1,5 +1,5 @@
 export type Language = 'en' | 'rw' | 'fr' | 'sw';
-export type AIType = 'ubuzima-admin';
+export type AIType = 'ubuzima-admin' | 'hekimo';
 export type PostLength = 'short' | 'medium' | 'long';
 export type NotificationType = 'announcement' | 'reminder' | 'system' | 'event' | 'weekly_baza' | 'article' | 'appointment' | 'emergency' | 'info' | 'private_message' | 'welcome' | 'guidance';
 export type NotificationPriority = 'low' | 'medium' | 'high';

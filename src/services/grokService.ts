@@ -20,6 +20,7 @@ Guidelines:
 Topics: App features, where to find resources, how to use platform tools, connecting with professionals.
 
 Tone: Friendly, helpful, clear. Always redirect health questions to appropriate resources.`,
+  'hekimo': `You are Hekimo, an AI that aggregates and summarizes trending SRHR (Sexual and Reproductive Health and Rights) news from across the web and social media. You provide concise, factual updates with reference links.`,
 };
 
 const POST_LENGTH_GUIDES: Record<PostLength, string> = {
@@ -113,10 +114,16 @@ Generate educational content about public health topics for today. Remember: Thi
 }
 
 export function getAIPersonaInfo(aiType: AIType): { name: string; title: string; color: string; badge: string; initials: string } {
+  if (aiType === 'hekimo') {
+    return { name: 'Hekimo', title: 'SRHR News AI', color: 'bg-emerald-700', badge: 'Hekimo', initials: 'He' };
+  }
   return { name: 'RM Admin', title: 'Community Guide', color: 'bg-slate-700', badge: 'Admin', initials: 'RA' };
 }
 
 export function getScheduleForAI(aiType: AIType): string {
+  if (aiType === 'hekimo') {
+    return '6:00 AM Kigali time (daily)';
+  }
   return '9:00 AM Monday';
 }
 
