@@ -3235,7 +3235,7 @@ function ChatManagementTab({
   onRemoveFacilitator: (userId: string) => Promise<boolean>;
   onBanUser: (userId: string) => Promise<boolean>;
   onUnbanUser: (userId: string) => Promise<boolean>;
-  onApproveFacilitatorRequest: (requestId: string, adminId: string, badges?: ('F' | 'S' | 'H')[]) => Promise<boolean>;
+  onApproveFacilitatorRequest: (requestId: string, adminId: string, badges?: ('F' | 'S' | 'H' | 'L')[]) => Promise<boolean>;
   onDenyFacilitatorRequest: (requestId: string, adminId: string, reason?: string) => Promise<boolean>;
   showSuccess: (msg: string) => void;
 }) {
@@ -3447,6 +3447,9 @@ function ChatManagementTab({
                             <Stethoscope className="w-4 h-4 text-green-600" />
                           </span>
                         )}
+                        {facilitator.badges?.includes('L') && (
+                          <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded font-bold" title="Legal Advisor">L</span>
+                        )}
                       </div>
                       <p className="text-xs text-cool-500">ID: {facilitator.userId}</p>
                       {facilitator.isBigSister && (
@@ -3527,14 +3530,14 @@ function ChatRequestsTab({
   showSuccess,
 }: {
   chatSettings: ChatSettings | null;
-  onApproveRequest: (requestId: string, adminId: string, badges?: ('F' | 'S' | 'H')[]) => Promise<boolean>;
+  onApproveRequest: (requestId: string, adminId: string, badges?: ('F' | 'S' | 'H' | 'L')[]) => Promise<boolean>;
   onDenyRequest: (requestId: string, adminId: string, reason?: string) => Promise<boolean>;
   showSuccess: (msg: string) => void;
 }) {
   const [denyingRequestId, setDenyingRequestId] = useState<string | null>(null);
   const [denialReason, setDenialReason] = useState('');
   const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
-  const [selectedBadges, setSelectedBadges] = useState<('F' | 'S' | 'H')[]>(['F']);
+  const [selectedBadges, setSelectedBadges] = useState<('F' | 'S' | 'H' | 'L')[]>(['F']);
 
   const pendingRequests = chatSettings?.facilitatorRequests?.filter(r => r.status === 'pending') || [];
   const approvedRequests = chatSettings?.facilitatorRequests?.filter(r => r.status === 'approved') || [];
@@ -3549,7 +3552,7 @@ function ChatRequestsTab({
     }
   };
 
-  const toggleBadge = (badge: 'F' | 'S' | 'H') => {
+  const toggleBadge = (badge: 'F' | 'S' | 'H' | 'L') => {
     setSelectedBadges(prev => {
       // F badge cannot be removed (must always be a facilitator)
       if (badge === 'F') return prev;
@@ -3662,9 +3665,32 @@ function ChatRequestsTab({
                         )}>Healthcare Provider</span>
                         {selectedBadges.includes('H') && <Check className="w-4 h-4 text-green-600" />}
                       </button>
+                      
+                      {/* L Badge - Legal Advisor */}
+                      <button
+                        onClick={() => toggleBadge('L')}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
+                          selectedBadges.includes('L')
+                            ? 'bg-indigo-100 border-2 border-indigo-500'
+                            : 'bg-slate-100 border-2 border-transparent hover:bg-slate-200'
+                        )}
+                      >
+                        <div className={cn(
+                          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                          selectedBadges.includes('L') ? 'bg-indigo-600 text-white' : 'bg-slate-400 text-white'
+                        )}>
+                          L
+                        </div>
+                        <span className={cn(
+                          'text-sm',
+                          selectedBadges.includes('L') ? 'text-indigo-700 font-medium' : 'text-slate-600'
+                        )}>Legal Advisor</span>
+                        {selectedBadges.includes('L') && <Check className="w-4 h-4 text-indigo-600" />}
+                      </button>
                     </div>
                     <p className="text-xs text-cool-500 mt-2">
-                      S = Can access Girls Room as Big Sister • H = Medical professional badge
+                      S = Can access Girls Room as Big Sister • H = Medical professional badge • L = Legal Advisor (Mpuza)
                     </p>
                   </div>
                   

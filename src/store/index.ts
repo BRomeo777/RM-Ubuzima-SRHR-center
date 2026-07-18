@@ -1715,7 +1715,7 @@ export const usePersistentStore = create<PersistentState>()(
         return true;
       },
 
-      approveFacilitatorRequest: async (requestId, adminId, badges?: ('F' | 'S' | 'H')[]) => {
+      approveFacilitatorRequest: async (requestId, adminId, badges?: ('F' | 'S' | 'H' | 'L')[]) => {
         const currentSettings = get().chatSettings;
         if (!currentSettings) return false;
 
@@ -1741,9 +1741,10 @@ export const usePersistentStore = create<PersistentState>()(
           canManageSRHR: true,
           canManageEmergency: true,
           role: 'Facilitator',
-          badges: assignedBadges as ('F' | 'S' | 'H')[],
+          badges: assignedBadges as ('F' | 'S' | 'H' | 'L')[],
           isBigSister: assignedBadges.includes('S'),
           isHealthcareProvider: assignedBadges.includes('H'),
+          isLegalAdvisor: assignedBadges.includes('L'),
         };
 
         const updatedSettings: ChatSettings = {
@@ -1773,7 +1774,7 @@ export const usePersistentStore = create<PersistentState>()(
             assignedAt: new Date().toISOString(),
             assignedBy: adminId,
             role: 'Facilitator',
-            badges: assignedBadges as ('F' | 'S' | 'H')[],
+            badges: assignedBadges as ('F' | 'S' | 'H' | 'L')[],
             permissions: {
               canDeleteMessages: true,
               canBanUsers: true,

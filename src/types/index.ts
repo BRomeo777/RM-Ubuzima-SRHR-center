@@ -133,9 +133,10 @@ export interface Facilitator {
   bio?: string;
   role?: string;
   // Badge system
-  badges?: ('F' | 'S' | 'H')[]; // F = Facilitator, S = Shangazi (Big Sister), H = Healthcare Provider
+  badges?: ('F' | 'S' | 'H' | 'L')[]; // F = Facilitator, S = Shangazi (Big Sister), H = Healthcare Provider, L = Legal Advisor
   isBigSister?: boolean; // Has 'S' badge - can work in Girls Room
   isHealthcareProvider?: boolean; // Has 'H' badge - medical professional
+  isLegalAdvisor?: boolean; // Has 'L' badge - legal affairs advisor
 }
 
 export interface HealthcareProvider {
