@@ -22,6 +22,25 @@ const db = getFirestore(app);
 // Collection path for direct messages
 const INBOX_COLLECTION = 'inbox_messages';
 const SHANGAZI_COLLECTION = 'shangazi_messages';
+const LEGAL_AFFAIRS_COLLECTION = 'legal_affairs_messages';
+const GBV_COLLECTION = 'gbv_messages';
+
+// Chat contexts handled by the facilitator inbox
+export type InboxContext = 'inbox' | 'shangazi' | 'legal' | 'gbv';
+
+// Resolve the Firestore collection for a given chat context
+const collectionForContext = (context: InboxContext): string => {
+  switch (context) {
+    case 'shangazi':
+      return SHANGAZI_COLLECTION;
+    case 'legal':
+      return LEGAL_AFFAIRS_COLLECTION;
+    case 'gbv':
+      return GBV_COLLECTION;
+    default:
+      return INBOX_COLLECTION;
+  }
+};
 
 /**
  * Subscribe to facilitator's inbox - ALL conversations this facilitator is part of
@@ -252,6 +271,210 @@ export function subscribeToShangaziInbox(
 }
 
 /**
+ * Subscribe to Legal Affairs inbox - messages from users to this Legal Advisor
+ * Uses participants array to find ALL messages where the advisor is involved,
+ * so the advisor sees both sent and received messages (two-way, like Shangazi).
+ */
+export function subscribeToLegalInbox(
+  advisorId: string,
+  callback: (conversations: InboxConversation[]) => void
+): () => void {
+  console.log(`[facilitatorInboxService] Subscribing to Legal Affairs inbox for: ${advisorId}`);
+
+  const q = query(
+    collection(db, LEGAL_AFFAIRS_COLLECTION),
+    where('participants', 'array-contains', advisorId),
+    limit(200)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const conversationMap = new Map<string, {
+      messages: DirectMessage[];
+      unreadCount: number;
+      participantId: string;
+      participantName: string;
+      participantAvatar: string;
+    }>();
+
+    snapshot.docs.forEach(docData => {
+      const data = docData.data();
+      if (data.isDeleted) return;
+
+      const message: DirectMessage = {
+        id: docData.id,
+        senderId: data.senderId || '',
+        senderName: data.senderName || '',
+        senderAvatar: data.senderAvatar || '',
+        receiverId: data.receiverId || '',
+        receiverName: data.receiverName || '',
+        receiverAvatar: data.receiverAvatar || '',
+        content: data.content || '',
+        timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+        isDeleted: data.isDeleted || false,
+        isRead: data.isRead || false,
+        type: data.type || 'text',
+      };
+
+      const conversationId = data.conversationId || [message.senderId, message.receiverId].sort().join('_');
+      const otherParticipantId = message.senderId === advisorId ? message.receiverId : message.senderId;
+      const otherParticipantName = (message.senderId === advisorId ? message.receiverName : message.senderName) || 'Unknown';
+      const otherParticipantAvatar = (message.senderId === advisorId ? message.receiverAvatar : message.senderAvatar) || '';
+
+      if (!conversationMap.has(conversationId)) {
+        conversationMap.set(conversationId, {
+          messages: [],
+          unreadCount: 0,
+          participantId: otherParticipantId,
+          participantName: otherParticipantName,
+          participantAvatar: otherParticipantAvatar,
+        });
+      }
+
+      const conv = conversationMap.get(conversationId)!;
+      conv.messages.push(message);
+
+      if (!message.isRead && message.receiverId === advisorId) {
+        conv.unreadCount++;
+      }
+    });
+
+    conversationMap.forEach(conv => {
+      conv.messages.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    });
+
+    const conversations: InboxConversation[] = Array.from(conversationMap.entries()).map(([, data]) => {
+      const lastMessage = data.messages[0];
+      return {
+        participantId: data.participantId,
+        participantName: data.participantName || 'Unknown',
+        participantAvatar: data.participantAvatar || '',
+        lastMessage: lastMessage?.content || '',
+        lastMessageTimestamp: lastMessage?.timestamp || new Date().toISOString(),
+        unreadCount: data.unreadCount,
+        isFacilitator: false,
+        context: 'legal',
+      };
+    });
+
+    conversations.sort((a, b) =>
+      new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime()
+    );
+
+    console.log(`[facilitatorInboxService] Legal Advisor has ${conversations.length} Legal Affairs conversations`);
+    callback(conversations);
+  }, (error) => {
+    console.error('[facilitatorInboxService] Error subscribing to Legal Affairs inbox:', error);
+    if (error.code === 'failed-precondition') {
+      console.error('[facilitatorInboxService] MISSING INDEX: Create single-field index for legal_affairs_messages.participants (Array)');
+    }
+    callback([]);
+  });
+}
+
+/**
+ * Subscribe to GBV inbox - messages from users to this GBV Counselor
+ */
+export function subscribeToGBVInbox(
+  counselorId: string,
+  callback: (conversations: InboxConversation[]) => void
+): () => void {
+  console.log(`[facilitatorInboxService] Subscribing to GBV inbox for: ${counselorId}`);
+
+  const q = query(
+    collection(db, GBV_COLLECTION),
+    where('participants', 'array-contains', counselorId),
+    limit(200)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const conversationMap = new Map<string, {
+      messages: DirectMessage[];
+      unreadCount: number;
+      participantId: string;
+      participantName: string;
+      participantAvatar: string;
+    }>();
+
+    snapshot.docs.forEach(docData => {
+      const data = docData.data();
+      if (data.isDeleted) return;
+
+      const message: DirectMessage = {
+        id: docData.id,
+        senderId: data.senderId || '',
+        senderName: data.senderName || '',
+        senderAvatar: data.senderAvatar || '',
+        receiverId: data.receiverId || '',
+        receiverName: data.receiverName || '',
+        receiverAvatar: data.receiverAvatar || '',
+        content: data.content || '',
+        timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+        isDeleted: data.isDeleted || false,
+        isRead: data.isRead || false,
+        type: data.type || 'text',
+      };
+
+      const conversationId = data.conversationId || [message.senderId, message.receiverId].sort().join('_');
+      const otherParticipantId = message.senderId === counselorId ? message.receiverId : message.senderId;
+      const otherParticipantName = (message.senderId === counselorId ? message.receiverName : message.senderName) || 'Unknown';
+      const otherParticipantAvatar = (message.senderId === counselorId ? message.receiverAvatar : message.senderAvatar) || '';
+
+      if (!conversationMap.has(conversationId)) {
+        conversationMap.set(conversationId, {
+          messages: [],
+          unreadCount: 0,
+          participantId: otherParticipantId,
+          participantName: otherParticipantName,
+          participantAvatar: otherParticipantAvatar,
+        });
+      }
+
+      const conv = conversationMap.get(conversationId)!;
+      conv.messages.push(message);
+
+      if (!message.isRead && message.receiverId === counselorId) {
+        conv.unreadCount++;
+      }
+    });
+
+    conversationMap.forEach(conv => {
+      conv.messages.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    });
+
+    const conversations: InboxConversation[] = Array.from(conversationMap.entries()).map(([, data]) => {
+      const lastMessage = data.messages[0];
+      return {
+        participantId: data.participantId,
+        participantName: data.participantName || 'Unknown',
+        participantAvatar: data.participantAvatar || '',
+        lastMessage: lastMessage?.content || '',
+        lastMessageTimestamp: lastMessage?.timestamp || new Date().toISOString(),
+        unreadCount: data.unreadCount,
+        isFacilitator: false,
+        context: 'gbv',
+      };
+    });
+
+    conversations.sort((a, b) =>
+      new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime()
+    );
+
+    console.log(`[facilitatorInboxService] GBV Counselor has ${conversations.length} GBV conversations`);
+    callback(conversations);
+  }, (error) => {
+    console.error('[facilitatorInboxService] Error subscribing to GBV inbox:', error);
+    if (error.code === 'failed-precondition') {
+      console.error('[facilitatorInboxService] MISSING INDEX: Create single-field index for gbv_messages.participants (Array)');
+    }
+    callback([]);
+  });
+}
+
+/**
  * Subscribe to conversation between facilitator and user
  * ULTRA-OPTIMIZED: Uses participants array only - NO composite index required
  * Prevents messages from disappearing due to missing index errors
@@ -259,12 +482,12 @@ export function subscribeToShangaziInbox(
 export function subscribeToConversation(
   facilitatorId: string,
   userId: string,
-  context: 'inbox' | 'shangazi',
+  context: InboxContext,
   callback: (messages: DirectMessage[]) => void
 ): () => void {
   console.log(`[facilitatorInboxService] Subscribing to ${context} conversation: ${facilitatorId} <-> ${userId}`);
 
-  const collectionName = context === 'shangazi' ? SHANGAZI_COLLECTION : INBOX_COLLECTION;
+  const collectionName = collectionForContext(context);
 
   // ULTRA-FIX: Use participants array only - NO orderBy to avoid composite index requirement
   // We filter by both participants to get the exact conversation
@@ -338,11 +561,11 @@ export async function sendDirectMessage(
   receiverId: string,
   receiverName: string,
   content: string,
-  context: 'inbox' | 'shangazi' = 'inbox'
+  context: InboxContext = 'inbox'
 ): Promise<DirectMessage | null> {
   console.log(`[facilitatorInboxService] Sending ${context} message from ${senderName} to ${receiverName}`);
 
-  const collectionName = context === 'shangazi' ? SHANGAZI_COLLECTION : INBOX_COLLECTION;
+  const collectionName = collectionForContext(context);
 
   try {
     // Create conversation ID for easier querying (sorted user IDs)
@@ -391,11 +614,11 @@ export async function sendDirectMessage(
  */
 export async function markMessagesAsRead(
   messageIds: string[],
-  context: 'inbox' | 'shangazi' = 'inbox'
+  context: InboxContext = 'inbox'
 ): Promise<boolean> {
   console.log(`[facilitatorInboxService] Marking ${messageIds.length} ${context} messages as read`);
 
-  const collectionName = context === 'shangazi' ? SHANGAZI_COLLECTION : INBOX_COLLECTION;
+  const collectionName = collectionForContext(context);
 
   try {
     const promises = messageIds.map(id =>
@@ -414,11 +637,11 @@ export async function markMessagesAsRead(
  */
 export async function deleteDirectMessage(
   messageId: string,
-  context: 'inbox' | 'shangazi' = 'inbox'
+  context: InboxContext = 'inbox'
 ): Promise<boolean> {
   console.log(`[facilitatorInboxService] Deleting ${context} message:`, messageId);
 
-  const collectionName = context === 'shangazi' ? SHANGAZI_COLLECTION : INBOX_COLLECTION;
+  const collectionName = collectionForContext(context);
 
   try {
     await updateDoc(doc(db, collectionName, messageId), { isDeleted: true });

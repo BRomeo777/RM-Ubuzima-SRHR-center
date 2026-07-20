@@ -20,7 +20,7 @@ export interface User {
   facilitatorAssignedAt?: string;
   facilitatorAssignedBy?: string;
   facilitatorRole?: string;
-  facilitatorBadges?: ('F' | 'S' | 'H')[];
+  facilitatorBadges?: ('F' | 'S' | 'H' | 'L' | 'G')[];
   facilitatorPermissions?: {
     canDeleteMessages: boolean;
     canBanUsers: boolean;
@@ -133,10 +133,11 @@ export interface Facilitator {
   bio?: string;
   role?: string;
   // Badge system
-  badges?: ('F' | 'S' | 'H' | 'L')[]; // F = Facilitator, S = Shangazi (Big Sister), H = Healthcare Provider, L = Legal Advisor
+  badges?: ('F' | 'S' | 'H' | 'L' | 'G')[]; // F = Facilitator, S = Shangazi (Big Sister), H = Healthcare Provider, L = Legal Advisor, G = GBV Counselor
   isBigSister?: boolean; // Has 'S' badge - can work in Girls Room
   isHealthcareProvider?: boolean; // Has 'H' badge - medical professional
   isLegalAdvisor?: boolean; // Has 'L' badge - legal affairs advisor
+  isGBVCounselor?: boolean; // Has 'G' badge - gender-based violence counselor
 }
 
 export interface HealthcareProvider {
@@ -176,6 +177,7 @@ export interface InboxConversation {
   lastMessageTimestamp: string;
   unreadCount: number;
   isFacilitator: boolean;
+  context?: string;
 }
 
 export interface Mention {

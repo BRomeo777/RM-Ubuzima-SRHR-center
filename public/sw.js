@@ -1,7 +1,7 @@
 // RM Ubuzima Service Worker - Optimized for Speed & Small Size
-// Version: 3.0 - Ultra-fast PWA
+// Version: 4.0 - purge stale bundles (adds Mpuza legal route)
 
-const CACHE_NAME = 'rm-ubuzima-v3';
+const CACHE_NAME = 'rm-ubuzima-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

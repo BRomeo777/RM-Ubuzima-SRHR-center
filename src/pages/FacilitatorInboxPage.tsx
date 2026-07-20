@@ -19,6 +19,8 @@ import {
   Check,
   CheckCheck,
   Clock,
+  Scale,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '../utils/helpers';
 import { usePhoneBackNavigation } from '../hooks/usePhoneBackNavigation';
@@ -26,6 +28,8 @@ import type { DirectMessage, InboxConversation, Facilitator } from '../types';
 import {
   subscribeToFacilitatorInbox,
   subscribeToShangaziInbox,
+  subscribeToLegalInbox,
+  subscribeToGBVInbox,
   subscribeToConversation,
   sendDirectMessage,
   markMessagesAsRead,
@@ -33,11 +37,12 @@ import {
 } from '../services/facilitatorInboxService';
 
 // Types for view state
-type ViewState = 'menu' | 'inbox-list' | 'shangazi-list' | 'chat';
+type ViewState = 'menu' | 'inbox-list' | 'shangazi-list' | 'legal-list' | 'gbv-list' | 'chat';
+type ChatContext = 'inbox' | 'shangazi' | 'legal' | 'gbv';
 
 // Extended conversation type for facilitator
 interface FacilitatorConversation extends InboxConversation {
-  context?: 'inbox' | 'shangazi';
+  context?: ChatContext;
 }
 
 export default function FacilitatorInboxPage() {
@@ -45,21 +50,29 @@ export default function FacilitatorInboxPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, setCurrentPage } = useEphemeralStore();
-  const { chatSettings, isUserBigSister } = usePersistentStore();
+  const { chatSettings, isUserBigSister, isUserLegalAdvisor, isUserGBVCounselor } = usePersistentStore();
 
   const currentUser = session?.user;
   const isBigSister = currentUser?.id && isUserBigSister
     ? isUserBigSister(currentUser.id)
     : false;
+  const isLegalAdvisor = currentUser?.id && isUserLegalAdvisor
+    ? isUserLegalAdvisor(currentUser.id)
+    : false;
+  const isGBVCounselor = currentUser?.id && isUserGBVCounselor
+    ? isUserGBVCounselor(currentUser.id)
+    : false;
 
   // View state
   const [viewState, setViewState] = useState<ViewState>('menu');
   const [selectedUser, setSelectedUser] = useState<FacilitatorConversation | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'shangazi'>('inbox');
+  const [activeTab, setActiveTab] = useState<ChatContext>('inbox');
 
   // Data states
   const [inboxConversations, setInboxConversations] = useState<FacilitatorConversation[]>([]);
   const [shangaziConversations, setShangaziConversations] = useState<FacilitatorConversation[]>([]);
+  const [legalConversations, setLegalConversations] = useState<FacilitatorConversation[]>([]);
+  const [gbvConversations, setGbvConversations] = useState<FacilitatorConversation[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +81,7 @@ export default function FacilitatorInboxPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, shangazi: 0 });
+  const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, shangazi: 0, legal: 0, gbv: 0 });
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
 
@@ -81,9 +94,11 @@ export default function FacilitatorInboxPage() {
     isOpen: viewState !== 'menu',
     onClose: () => {
       if (viewState === 'chat') {
-        setViewState(activeTab === 'shangazi' ? 'shangazi-list' : 'inbox-list');
+        setViewState(
+          activeTab === 'shangazi' ? 'shangazi-list' : activeTab === 'legal' ? 'legal-list' : activeTab === 'gbv' ? 'gbv-list' : 'inbox-list'
+        );
         setSelectedUser(null);
-      } else if (viewState === 'inbox-list' || viewState === 'shangazi-list') {
+      } else if (viewState === 'inbox-list' || viewState === 'shangazi-list' || viewState === 'legal-list' || viewState === 'gbv-list') {
         setViewState('menu');
       }
     },
@@ -151,6 +166,48 @@ export default function FacilitatorInboxPage() {
       unsubscribe();
     };
   }, [currentUser?.id, isBigSister]);
+
+  // Subscribe to Legal Affairs conversations (only for Legal Advisors)
+  useEffect(() => {
+    if (!currentUser?.id || !isLegalAdvisor) return;
+
+    console.log('[FacilitatorInbox] Setting up Legal Affairs subscription');
+
+    const unsubscribe = subscribeToLegalInbox(currentUser.id, (convs) => {
+      console.log(`[FacilitatorInbox] Received ${convs.length} Legal Affairs conversations`);
+      const conversationsWithContext = convs.map(c => ({ ...c, context: 'legal' as const }));
+      setLegalConversations(conversationsWithContext);
+
+      const unread = conversationsWithContext.reduce((sum, c) => sum + c.unreadCount, 0);
+      setUnreadCounts(prev => ({ ...prev, legal: unread }));
+    });
+
+    return () => {
+      console.log('[FacilitatorInbox] Cleaning up Legal Affairs subscription');
+      unsubscribe();
+    };
+  }, [currentUser?.id, isLegalAdvisor]);
+
+  // Subscribe to GBV conversations (only for GBV Counselors)
+  useEffect(() => {
+    if (!currentUser?.id || !isGBVCounselor) return;
+
+    console.log('[FacilitatorInbox] Setting up GBV subscription');
+
+    const unsubscribe = subscribeToGBVInbox(currentUser.id, (convs) => {
+      console.log(`[FacilitatorInbox] Received ${convs.length} GBV conversations`);
+      const conversationsWithContext = convs.map(c => ({ ...c, context: 'gbv' as const }));
+      setGbvConversations(conversationsWithContext);
+
+      const unread = conversationsWithContext.reduce((sum, c) => sum + c.unreadCount, 0);
+      setUnreadCounts(prev => ({ ...prev, gbv: unread }));
+    });
+
+    return () => {
+      console.log('[FacilitatorInbox] Cleaning up GBV subscription');
+      unsubscribe();
+    };
+  }, [currentUser?.id, isGBVCounselor]);
 
   // Subscribe to messages when a user is selected
   useEffect(() => {
@@ -251,7 +308,7 @@ export default function FacilitatorInboxPage() {
     if (!confirm(t('chat.confirmDelete'))) return;
 
     try {
-      const success = await deleteDirectMessage(messageId);
+      const success = await deleteDirectMessage(messageId, selectedUser?.context || 'inbox');
       if (success) {
         console.log('[FacilitatorInbox] Message deleted:', messageId);
       }
@@ -272,6 +329,12 @@ export default function FacilitatorInboxPage() {
     c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const filteredShangazi = shangaziConversations.filter(c =>
+    c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredLegal = legalConversations.filter(c =>
+    c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredGBV = gbvConversations.filter(c =>
     c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -370,6 +433,56 @@ export default function FacilitatorInboxPage() {
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </button>
         )}
+
+        {/* Legal Affairs Option (Only for Legal Advisors) */}
+        {isLegalAdvisor && (
+          <button
+            onClick={() => setViewState('legal-list')}
+            className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-indigo-200 transition-all text-left relative"
+          >
+            <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center relative">
+              <Scale className="w-7 h-7 text-indigo-600" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center border-2 border-white">
+                <span className="text-white text-xs font-bold">L</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 text-lg">{t('mpuza.legalHumanRights')}</h3>
+              <p className="text-sm text-gray-500">{t('mpuza.legalHumanRightsDesc')}</p>
+            </div>
+            {unreadCounts.legal > 0 && (
+              <div className="absolute top-4 right-14 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">{unreadCounts.legal}</span>
+              </div>
+            )}
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
+        )}
+
+        {/* GBV Option (Only for GBV Counselors) */}
+        {isGBVCounselor && (
+          <button
+            onClick={() => setViewState('gbv-list')}
+            className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-amber-200 transition-all text-left relative"
+          >
+            <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center relative">
+              <ShieldAlert className="w-7 h-7 text-amber-600" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center border-2 border-white">
+                <span className="text-white text-xs font-bold">G</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 text-lg">{t('mpuza.genderBasedViolence')}</h3>
+              <p className="text-sm text-gray-500">{t('mpuza.genderBasedViolenceDesc')}</p>
+            </div>
+            {unreadCounts.gbv > 0 && (
+              <div className="absolute top-4 right-14 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">{unreadCounts.gbv}</span>
+              </div>
+            )}
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
+        )}
       </div>
 
       {/* Info Card */}
@@ -386,18 +499,24 @@ export default function FacilitatorInboxPage() {
   );
 
   // ==================== RENDER CONVERSATION LIST ====================
-  const renderConversationList = (conversations: FacilitatorConversation[], type: 'inbox' | 'shangazi') => {
+  const renderConversationList = (conversations: FacilitatorConversation[], type: ChatContext) => {
     const isShangazi = type === 'shangazi';
-    const title = isShangazi ? t('girlsRoom.bazaShangazi') : t('chat.inbox');
-    const colorClass = isShangazi ? 'pink' : 'blue';
-    const filtered = isShangazi ? filteredShangazi : filteredInbox;
+    const isLegal = type === 'legal';
+    const isGBV = type === 'gbv';
+    const title = isShangazi ? t('girlsRoom.bazaShangazi') : isLegal ? t('mpuza.legalHumanRights') : isGBV ? t('mpuza.genderBasedViolence') : t('chat.inbox');
+    const filtered = isShangazi ? filteredShangazi : isLegal ? filteredLegal : isGBV ? filteredGBV : filteredInbox;
+    const headerBg = isShangazi ? 'bg-pink-50 border-pink-200' : isLegal ? 'bg-indigo-50 border-indigo-200' : isGBV ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
+    const emptyIconBg = isShangazi ? 'bg-pink-100' : isLegal ? 'bg-indigo-100' : isGBV ? 'bg-amber-100' : 'bg-blue-100';
+    const emptyIconColor = isShangazi ? 'text-pink-400' : isLegal ? 'text-indigo-400' : isGBV ? 'text-amber-400' : 'text-blue-400';
+    const badgeBg = isShangazi ? 'bg-pink-500' : isLegal ? 'bg-indigo-600' : isGBV ? 'bg-amber-600' : 'bg-blue-500';
+    const ringColor = isShangazi ? '#ec4899' : isLegal ? '#6366f1' : isGBV ? '#d97706' : '#3b82f6';
 
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
         {/* Header */}
         <div className={cn(
           "border-b px-4 py-4",
-          isShangazi ? 'bg-pink-50 border-pink-200' : 'bg-blue-50 border-blue-200'
+          headerBg
         )}>
           <div className="flex items-center gap-3">
             <button
@@ -423,7 +542,7 @@ export default function FacilitatorInboxPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('chat.searchUsers')}
               className="w-full pl-10 pr-4 py-2 bg-white rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-offset-0"
-              style={{ '--tw-ring-color': isShangazi ? '#ec4899' : '#3b82f6' } as React.CSSProperties}
+              style={{ '--tw-ring-color': ringColor } as React.CSSProperties}
             />
           </div>
         </div>
@@ -434,12 +553,16 @@ export default function FacilitatorInboxPage() {
             <div className="text-center py-12">
               <div className={cn(
                 "w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4",
-                isShangazi ? 'bg-pink-100' : 'bg-blue-100'
+                emptyIconBg
               )}>
                 {isShangazi ? (
-                  <Heart className="w-10 h-10 text-pink-400" />
+                  <Heart className={cn('w-10 h-10', emptyIconColor)} />
+                ) : isLegal ? (
+                  <Scale className={cn('w-10 h-10', emptyIconColor)} />
+                ) : isGBV ? (
+                  <ShieldAlert className={cn('w-10 h-10', emptyIconColor)} />
                 ) : (
-                  <Inbox className="w-10 h-10 text-blue-400" />
+                  <Inbox className={cn('w-10 h-10', emptyIconColor)} />
                 )}
               </div>
               <p className="text-gray-500 font-medium">
@@ -491,9 +614,9 @@ export default function FacilitatorInboxPage() {
                     {conv.lastMessage}
                   </p>
                 </div>
-                {isShangazi && (
-                  <div className="flex-shrink-0 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">S</span>
+                {(isShangazi || isLegal || isGBV) && (
+                  <div className={cn('flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center', badgeBg)}>
+                    <span className="text-white text-xs font-bold">{isShangazi ? 'S' : isLegal ? 'L' : 'G'}</span>
                   </div>
                 )}
               </button>
@@ -508,18 +631,26 @@ export default function FacilitatorInboxPage() {
   const renderChat = () => {
     if (!selectedUser) return null;
     const isShangazi = activeTab === 'shangazi';
+    const isLegal = activeTab === 'legal';
+    const isGBV = activeTab === 'gbv';
+    const headerBg = isShangazi ? 'bg-pink-50 border-pink-200' : isLegal ? 'bg-indigo-50 border-indigo-200' : isGBV ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
+    const bubbleOwn = isShangazi ? 'bg-pink-500 text-white rounded-br-sm' : isLegal ? 'bg-indigo-600 text-white rounded-br-sm' : isGBV ? 'bg-amber-600 text-white rounded-br-sm' : 'bg-blue-500 text-white rounded-br-sm';
+    const sendBtn = isShangazi ? 'bg-pink-500 hover:bg-pink-600 disabled:bg-pink-300' : isLegal ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300' : isGBV ? 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300' : 'bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300';
+    const emptyIconBg = isShangazi ? 'bg-pink-100' : isLegal ? 'bg-indigo-100' : isGBV ? 'bg-amber-100' : 'bg-blue-100';
+    const emptyIconColor = isShangazi ? 'text-pink-400' : isLegal ? 'text-indigo-400' : isGBV ? 'text-amber-400' : 'text-blue-400';
+    const backList: ViewState = isShangazi ? 'shangazi-list' : isLegal ? 'legal-list' : isGBV ? 'gbv-list' : 'inbox-list';
 
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
         {/* Header */}
         <div className={cn(
           "border-b px-4 py-3 flex-shrink-0",
-          isShangazi ? 'bg-pink-50 border-pink-200' : 'bg-blue-50 border-blue-200'
+          headerBg
         )}>
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                setViewState(isShangazi ? 'shangazi-list' : 'inbox-list');
+                setViewState(backList);
                 setSelectedUser(null);
               }}
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/50 transition-colors"
@@ -536,9 +667,9 @@ export default function FacilitatorInboxPage() {
                 }}
                 loading="eager"
               />
-              {isShangazi && (
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center border-2 border-white">
-                  <span className="text-white text-[10px] font-bold">S</span>
+              {(isShangazi || isLegal || isGBV) && (
+                <div className={cn('absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white', isShangazi ? 'bg-pink-500' : isLegal ? 'bg-indigo-600' : 'bg-amber-600')}>
+                  <span className="text-white text-[10px] font-bold">{isShangazi ? 'S' : isLegal ? 'L' : 'G'}</span>
                 </div>
               )}
             </div>
@@ -558,11 +689,11 @@ export default function FacilitatorInboxPage() {
             <div className="text-center py-12">
               <div className={cn(
                 "w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4",
-                isShangazi ? 'bg-pink-100' : 'bg-blue-100'
+                emptyIconBg
               )}>
                 <MessageSquare className={cn(
                   "w-8 h-8",
-                  isShangazi ? 'text-pink-400' : 'text-blue-400'
+                  emptyIconColor
                 )} />
               </div>
               <p className="text-gray-500">{t('chat.noMessagesYet')}</p>
@@ -600,9 +731,7 @@ export default function FacilitatorInboxPage() {
                       <div className={cn(
                         'rounded-2xl px-4 py-2.5 text-sm relative group',
                         isOwnMessage
-                          ? isShangazi
-                            ? 'bg-pink-500 text-white rounded-br-sm'
-                            : 'bg-blue-500 text-white rounded-br-sm'
+                          ? bubbleOwn
                           : 'bg-white text-gray-800 rounded-bl-sm shadow-sm border border-gray-100'
                       )}>
                         {msg.content}
@@ -669,9 +798,7 @@ export default function FacilitatorInboxPage() {
               disabled={!newMessage.trim() || isLoading}
               className={cn(
                 "w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 rounded-full flex items-center justify-center transition-colors shadow-sm",
-                isShangazi
-                  ? 'bg-pink-500 hover:bg-pink-600 disabled:bg-pink-300'
-                  : 'bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300',
+                sendBtn,
                 "text-white disabled:opacity-50"
               )}
             >
@@ -743,6 +870,10 @@ export default function FacilitatorInboxPage() {
       return renderConversationList(inboxConversations, 'inbox');
     case 'shangazi-list':
       return renderConversationList(shangaziConversations, 'shangazi');
+    case 'legal-list':
+      return renderConversationList(legalConversations, 'legal');
+    case 'gbv-list':
+      return renderConversationList(gbvConversations, 'gbv');
     case 'chat':
       return renderChat();
     default:

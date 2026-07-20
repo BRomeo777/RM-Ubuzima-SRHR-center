@@ -181,6 +181,8 @@ interface PersistentState {
   // Badge system
   isUserBigSister: (userId: string) => boolean;
   isUserHealthcareProvider: (userId: string) => boolean;
+  isUserLegalAdvisor: (userId: string) => boolean;
+  isUserGBVCounselor: (userId: string) => boolean;
   getBigSisters: () => Facilitator[];
   // Facilitator status management
   getActiveFacilitators: () => Facilitator[];
@@ -1950,6 +1952,36 @@ export const usePersistentStore = create<PersistentState>()(
 
         // Also check savedUser's badges (cross-device persistence)
         if (savedUser?.id === userId && savedUser?.facilitatorBadges?.includes('H')) {
+          return true;
+        }
+
+        return false;
+      },
+
+      isUserLegalAdvisor: (userId: string) => {
+        const currentSettings = get().chatSettings;
+        const savedUser = get().savedUser;
+
+        // Check chatSettings first
+        const facilitator = currentSettings?.facilitators?.find(f => f.userId === userId);
+        if (facilitator?.isLegalAdvisor || facilitator?.badges?.includes('L')) return true;
+
+        // Also check savedUser's badges (cross-device persistence)
+        if (savedUser?.id === userId && savedUser?.facilitatorBadges?.includes('L')) {
+          return true;
+        }
+
+        return false;
+      },
+
+      isUserGBVCounselor: (userId: string) => {
+        const currentSettings = get().chatSettings;
+        const savedUser = get().savedUser;
+
+        const facilitator = currentSettings?.facilitators?.find(f => f.userId === userId);
+        if (facilitator?.isGBVCounselor || facilitator?.badges?.includes('G')) return true;
+
+        if (savedUser?.id === userId && savedUser?.facilitatorBadges?.includes('G')) {
           return true;
         }
 
