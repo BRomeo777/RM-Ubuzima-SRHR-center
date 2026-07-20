@@ -24,9 +24,11 @@ const INBOX_COLLECTION = 'inbox_messages';
 const SHANGAZI_COLLECTION = 'shangazi_messages';
 const LEGAL_AFFAIRS_COLLECTION = 'legal_affairs_messages';
 const GBV_COLLECTION = 'gbv_messages';
+const ABORTION_COLLECTION = 'abortion_messages';
+const FAMILY_PLANNING_COLLECTION = 'family_planning_messages';
 
 // Chat contexts handled by the facilitator inbox
-export type InboxContext = 'inbox' | 'shangazi' | 'legal' | 'gbv';
+export type InboxContext = 'inbox' | 'shangazi' | 'legal' | 'gbv' | 'abortion' | 'family-planning';
 
 // Resolve the Firestore collection for a given chat context
 const collectionForContext = (context: InboxContext): string => {
@@ -37,6 +39,10 @@ const collectionForContext = (context: InboxContext): string => {
       return LEGAL_AFFAIRS_COLLECTION;
     case 'gbv':
       return GBV_COLLECTION;
+    case 'abortion':
+      return ABORTION_COLLECTION;
+    case 'family-planning':
+      return FAMILY_PLANNING_COLLECTION;
     default:
       return INBOX_COLLECTION;
   }
@@ -469,6 +475,208 @@ export function subscribeToGBVInbox(
     console.error('[facilitatorInboxService] Error subscribing to GBV inbox:', error);
     if (error.code === 'failed-precondition') {
       console.error('[facilitatorInboxService] MISSING INDEX: Create single-field index for gbv_messages.participants (Array)');
+    }
+    callback([]);
+  });
+}
+
+/**
+ * Subscribe to Abortion inbox - messages from users to this Abortion Advisor
+ */
+export function subscribeToAbortionInbox(
+  advisorId: string,
+  callback: (conversations: InboxConversation[]) => void
+): () => void {
+  console.log(`[facilitatorInboxService] Subscribing to Abortion inbox for: ${advisorId}`);
+
+  const q = query(
+    collection(db, ABORTION_COLLECTION),
+    where('participants', 'array-contains', advisorId),
+    limit(200)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const conversationMap = new Map<string, {
+      messages: DirectMessage[];
+      unreadCount: number;
+      participantId: string;
+      participantName: string;
+      participantAvatar: string;
+    }>();
+
+    snapshot.docs.forEach(docData => {
+      const data = docData.data();
+      if (data.isDeleted) return;
+
+      const message: DirectMessage = {
+        id: docData.id,
+        senderId: data.senderId || '',
+        senderName: data.senderName || '',
+        senderAvatar: data.senderAvatar || '',
+        receiverId: data.receiverId || '',
+        receiverName: data.receiverName || '',
+        receiverAvatar: data.receiverAvatar || '',
+        content: data.content || '',
+        timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+        isDeleted: data.isDeleted || false,
+        isRead: data.isRead || false,
+        type: data.type || 'text',
+      };
+
+      const conversationId = data.conversationId || [message.senderId, message.receiverId].sort().join('_');
+      const otherParticipantId = message.senderId === advisorId ? message.receiverId : message.senderId;
+      const otherParticipantName = (message.senderId === advisorId ? message.receiverName : message.senderName) || 'Unknown';
+      const otherParticipantAvatar = (message.senderId === advisorId ? message.receiverAvatar : message.senderAvatar) || '';
+
+      if (!conversationMap.has(conversationId)) {
+        conversationMap.set(conversationId, {
+          messages: [],
+          unreadCount: 0,
+          participantId: otherParticipantId,
+          participantName: otherParticipantName,
+          participantAvatar: otherParticipantAvatar,
+        });
+      }
+
+      const conv = conversationMap.get(conversationId)!;
+      conv.messages.push(message);
+
+      if (!message.isRead && message.receiverId === advisorId) {
+        conv.unreadCount++;
+      }
+    });
+
+    conversationMap.forEach(conv => {
+      conv.messages.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    });
+
+    const conversations: InboxConversation[] = Array.from(conversationMap.entries()).map(([, data]) => {
+      const lastMessage = data.messages[0];
+      return {
+        participantId: data.participantId,
+        participantName: data.participantName || 'Unknown',
+        participantAvatar: data.participantAvatar || '',
+        lastMessage: lastMessage?.content || '',
+        lastMessageTimestamp: lastMessage?.timestamp || new Date().toISOString(),
+        unreadCount: data.unreadCount,
+        isFacilitator: false,
+        context: 'abortion',
+      };
+    });
+
+    conversations.sort((a, b) =>
+      new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime()
+    );
+
+    console.log(`[facilitatorInboxService] Abortion Advisor has ${conversations.length} Abortion conversations`);
+    callback(conversations);
+  }, (error) => {
+    console.error('[facilitatorInboxService] Error subscribing to Abortion inbox:', error);
+    if (error.code === 'failed-precondition') {
+      console.error('[facilitatorInboxService] MISSING INDEX: Create single-field index for abortion_messages.participants (Array)');
+    }
+    callback([]);
+  });
+}
+
+/**
+ * Subscribe to Family Planning inbox - messages from users to this Family Planning Counselor
+ */
+export function subscribeToFamilyPlanningInbox(
+  counselorId: string,
+  callback: (conversations: InboxConversation[]) => void
+): () => void {
+  console.log(`[facilitatorInboxService] Subscribing to Family Planning inbox for: ${counselorId}`);
+
+  const q = query(
+    collection(db, FAMILY_PLANNING_COLLECTION),
+    where('participants', 'array-contains', counselorId),
+    limit(200)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const conversationMap = new Map<string, {
+      messages: DirectMessage[];
+      unreadCount: number;
+      participantId: string;
+      participantName: string;
+      participantAvatar: string;
+    }>();
+
+    snapshot.docs.forEach(docData => {
+      const data = docData.data();
+      if (data.isDeleted) return;
+
+      const message: DirectMessage = {
+        id: docData.id,
+        senderId: data.senderId || '',
+        senderName: data.senderName || '',
+        senderAvatar: data.senderAvatar || '',
+        receiverId: data.receiverId || '',
+        receiverName: data.receiverName || '',
+        receiverAvatar: data.receiverAvatar || '',
+        content: data.content || '',
+        timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+        isDeleted: data.isDeleted || false,
+        isRead: data.isRead || false,
+        type: data.type || 'text',
+      };
+
+      const conversationId = data.conversationId || [message.senderId, message.receiverId].sort().join('_');
+      const otherParticipantId = message.senderId === counselorId ? message.receiverId : message.senderId;
+      const otherParticipantName = (message.senderId === counselorId ? message.receiverName : message.senderName) || 'Unknown';
+      const otherParticipantAvatar = (message.senderId === counselorId ? message.receiverAvatar : message.senderAvatar) || '';
+
+      if (!conversationMap.has(conversationId)) {
+        conversationMap.set(conversationId, {
+          messages: [],
+          unreadCount: 0,
+          participantId: otherParticipantId,
+          participantName: otherParticipantName,
+          participantAvatar: otherParticipantAvatar,
+        });
+      }
+
+      const conv = conversationMap.get(conversationId)!;
+      conv.messages.push(message);
+
+      if (!message.isRead && message.receiverId === counselorId) {
+        conv.unreadCount++;
+      }
+    });
+
+    conversationMap.forEach(conv => {
+      conv.messages.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    });
+
+    const conversations: InboxConversation[] = Array.from(conversationMap.entries()).map(([, data]) => {
+      const lastMessage = data.messages[0];
+      return {
+        participantId: data.participantId,
+        participantName: data.participantName || 'Unknown',
+        participantAvatar: data.participantAvatar || '',
+        lastMessage: lastMessage?.content || '',
+        lastMessageTimestamp: lastMessage?.timestamp || new Date().toISOString(),
+        unreadCount: data.unreadCount,
+        isFacilitator: false,
+        context: 'family-planning',
+      };
+    });
+
+    conversations.sort((a, b) =>
+      new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime()
+    );
+
+    console.log(`[facilitatorInboxService] Family Planning Counselor has ${conversations.length} Family Planning conversations`);
+    callback(conversations);
+  }, (error) => {
+    console.error('[facilitatorInboxService] Error subscribing to Family Planning inbox:', error);
+    if (error.code === 'failed-precondition') {
+      console.error('[facilitatorInboxService] MISSING INDEX: Create single-field index for family_planning_messages.participants (Array)');
     }
     callback([]);
   });

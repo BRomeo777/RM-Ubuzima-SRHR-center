@@ -106,6 +106,8 @@ const INBOX_COLLECTION = 'inbox_messages';
 const SHANGAZI_COLLECTION = 'shangazi_messages';
 const LEGAL_AFFAIRS_COLLECTION = 'legal_affairs_messages';
 const GBV_COLLECTION = 'gbv_messages';
+const ABORTION_COLLECTION = 'abortion_messages';
+const FAMILY_PLANNING_COLLECTION = 'family_planning_messages';
 const FACILITATORS_COLLECTION = 'facilitators';
 
 /**
@@ -1201,6 +1203,408 @@ export function subscribeToUserGBVInbox(
     callback(conversations);
   }, (error) => {
     console.error('[inboxService] Error subscribing to GBV inbox:', error);
+    callback([]);
+  });
+}
+
+// ============================================
+// ABORTION CHAT (Mpuza - Abortion Support)
+// ============================================
+
+export async function sendAbortionMessage(
+  senderId: string,
+  senderName: string,
+  senderAvatar: string,
+  receiverId: string,
+  receiverName: string,
+  content: string
+): Promise<DirectMessage | null> {
+  console.log('[inboxService] Sending Abortion message...');
+
+  if (!senderId || !receiverId || !content.trim()) {
+    throw new Error('Missing required fields: senderId, receiverId, or content');
+  }
+
+  try {
+    const conversationId = [senderId, receiverId].sort().join('_');
+    const participants = [senderId, receiverId];
+
+    const messageData = {
+      senderId,
+      senderName: senderName || 'Anonymous',
+      senderAvatar: senderAvatar || '',
+      receiverId,
+      receiverName: receiverName || 'Abortion Advisor',
+      content: content.trim(),
+      conversationId,
+      participants,
+      timestamp: serverTimestamp(),
+      isDeleted: false,
+      isRead: false,
+      type: 'text',
+    };
+
+    const docRef = await addDoc(collection(db, ABORTION_COLLECTION), messageData);
+    console.log('[inboxService] Abortion message sent successfully:', docRef.id);
+
+    return {
+      id: docRef.id,
+      senderId,
+      senderName: messageData.senderName,
+      senderAvatar: messageData.senderAvatar,
+      receiverId,
+      receiverName: messageData.receiverName,
+      content: content.trim(),
+      timestamp: new Date().toISOString(),
+      isDeleted: false,
+      isRead: false,
+      type: 'text',
+    };
+  } catch (error: any) {
+    console.error('[inboxService] Error sending Abortion message:', error);
+    throw error;
+  }
+}
+
+export function subscribeToAbortionConversation(
+  userId: string,
+  advisorId: string,
+  callback: (messages: DirectMessage[]) => void
+): () => void {
+  console.log(`[inboxService] Subscribing to Abortion conversation: ${userId} <-> ${advisorId}`);
+
+  const q = query(
+    collection(db, ABORTION_COLLECTION),
+    where('participants', 'array-contains', userId),
+    limit(300)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const allMessages = snapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          senderId: data.senderId || '',
+          senderName: data.senderName || '',
+          senderAvatar: data.senderAvatar || '',
+          receiverId: data.receiverId || '',
+          receiverName: data.receiverName || '',
+          receiverAvatar: data.receiverAvatar || '',
+          content: data.content || '',
+          timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+          isDeleted: data.isDeleted || false,
+          isRead: data.isRead || false,
+          type: data.type || 'text',
+        } as DirectMessage;
+      })
+      .filter(msg => {
+        const isBetweenUsers = (msg.senderId === userId && msg.receiverId === advisorId) ||
+                               (msg.senderId === advisorId && msg.receiverId === userId);
+        return isBetweenUsers && !msg.isDeleted;
+      });
+
+    const messages = allMessages.sort((a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    callback(messages);
+  }, (error) => {
+    console.error('[inboxService] Error subscribing to Abortion conversation:', error);
+  });
+}
+
+export function subscribeToUserAbortionInbox(
+  userId: string,
+  callback: (conversations: InboxConversation[]) => void
+): () => void {
+  console.log(`[inboxService] Subscribing to Abortion inbox for user: ${userId}`);
+
+  const q = query(
+    collection(db, ABORTION_COLLECTION),
+    where('participants', 'array-contains', userId),
+    limit(200)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const conversationMap = new Map<string, {
+      messages: DirectMessage[];
+      unreadCount: number;
+      participantId: string;
+      participantName: string;
+      participantAvatar: string;
+    }>();
+
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.isDeleted) return;
+
+      const message: DirectMessage = {
+        id: doc.id,
+        senderId: data.senderId || '',
+        senderName: data.senderName || '',
+        senderAvatar: data.senderAvatar || '',
+        receiverId: data.receiverId || '',
+        receiverName: data.receiverName || '',
+        receiverAvatar: data.receiverAvatar || '',
+        content: data.content || '',
+        timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+        isDeleted: data.isDeleted || false,
+        isRead: data.isRead || false,
+        type: data.type || 'text',
+      };
+
+      const conversationId = data.conversationId || [message.senderId, message.receiverId].sort().join('_');
+      const otherId = message.senderId === userId ? message.receiverId : message.senderId;
+      const otherName = (message.senderId === userId ? message.receiverName : message.senderName) || 'Abortion Advisor';
+      const otherAvatar = (message.senderId === userId ? message.receiverAvatar : message.senderAvatar) || '';
+
+      if (!conversationMap.has(conversationId)) {
+        conversationMap.set(conversationId, {
+          messages: [],
+          unreadCount: 0,
+          participantId: otherId,
+          participantName: otherName,
+          participantAvatar: otherAvatar,
+        });
+      }
+
+      const conv = conversationMap.get(conversationId)!;
+      conv.messages.push(message);
+
+      if (message.receiverId === userId && !message.isRead) {
+        conv.unreadCount++;
+      }
+    });
+
+    conversationMap.forEach(conv => {
+      conv.messages.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    });
+
+    const conversations: InboxConversation[] = Array.from(conversationMap.entries()).map(([_, data]) => {
+      const lastMessage = data.messages[0];
+      return {
+        participantId: data.participantId,
+        participantName: data.participantName,
+        participantAvatar: data.participantAvatar,
+        lastMessage: lastMessage?.content || '',
+        lastMessageTimestamp: lastMessage?.timestamp || new Date().toISOString(),
+        unreadCount: data.unreadCount,
+        isFacilitator: true,
+      };
+    });
+
+    conversations.sort((a, b) =>
+      new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime()
+    );
+
+    console.log(`[inboxService] User has ${conversations.length} Abortion conversations`);
+    callback(conversations);
+  }, (error) => {
+    console.error('[inboxService] Error subscribing to Abortion inbox:', error);
+    callback([]);
+  });
+}
+
+// ============================================
+// FAMILY PLANNING CHAT (Mpuza - Family Planning)
+// ============================================
+
+export async function sendFamilyPlanningMessage(
+  senderId: string,
+  senderName: string,
+  senderAvatar: string,
+  receiverId: string,
+  receiverName: string,
+  content: string
+): Promise<DirectMessage | null> {
+  console.log('[inboxService] Sending Family Planning message...');
+
+  if (!senderId || !receiverId || !content.trim()) {
+    throw new Error('Missing required fields: senderId, receiverId, or content');
+  }
+
+  try {
+    const conversationId = [senderId, receiverId].sort().join('_');
+    const participants = [senderId, receiverId];
+
+    const messageData = {
+      senderId,
+      senderName: senderName || 'Anonymous',
+      senderAvatar: senderAvatar || '',
+      receiverId,
+      receiverName: receiverName || 'Family Planning Counselor',
+      content: content.trim(),
+      conversationId,
+      participants,
+      timestamp: serverTimestamp(),
+      isDeleted: false,
+      isRead: false,
+      type: 'text',
+    };
+
+    const docRef = await addDoc(collection(db, FAMILY_PLANNING_COLLECTION), messageData);
+    console.log('[inboxService] Family Planning message sent successfully:', docRef.id);
+
+    return {
+      id: docRef.id,
+      senderId,
+      senderName: messageData.senderName,
+      senderAvatar: messageData.senderAvatar,
+      receiverId,
+      receiverName: messageData.receiverName,
+      content: content.trim(),
+      timestamp: new Date().toISOString(),
+      isDeleted: false,
+      isRead: false,
+      type: 'text',
+    };
+  } catch (error: any) {
+    console.error('[inboxService] Error sending Family Planning message:', error);
+    throw error;
+  }
+}
+
+export function subscribeToFamilyPlanningConversation(
+  userId: string,
+  counselorId: string,
+  callback: (messages: DirectMessage[]) => void
+): () => void {
+  console.log(`[inboxService] Subscribing to Family Planning conversation: ${userId} <-> ${counselorId}`);
+
+  const q = query(
+    collection(db, FAMILY_PLANNING_COLLECTION),
+    where('participants', 'array-contains', userId),
+    limit(300)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const allMessages = snapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          senderId: data.senderId || '',
+          senderName: data.senderName || '',
+          senderAvatar: data.senderAvatar || '',
+          receiverId: data.receiverId || '',
+          receiverName: data.receiverName || '',
+          receiverAvatar: data.receiverAvatar || '',
+          content: data.content || '',
+          timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+          isDeleted: data.isDeleted || false,
+          isRead: data.isRead || false,
+          type: data.type || 'text',
+        } as DirectMessage;
+      })
+      .filter(msg => {
+        const isBetweenUsers = (msg.senderId === userId && msg.receiverId === counselorId) ||
+                               (msg.senderId === counselorId && msg.receiverId === userId);
+        return isBetweenUsers && !msg.isDeleted;
+      });
+
+    const messages = allMessages.sort((a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    callback(messages);
+  }, (error) => {
+    console.error('[inboxService] Error subscribing to Family Planning conversation:', error);
+  });
+}
+
+export function subscribeToUserFamilyPlanningInbox(
+  userId: string,
+  callback: (conversations: InboxConversation[]) => void
+): () => void {
+  console.log(`[inboxService] Subscribing to Family Planning inbox for user: ${userId}`);
+
+  const q = query(
+    collection(db, FAMILY_PLANNING_COLLECTION),
+    where('participants', 'array-contains', userId),
+    limit(200)
+  );
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const conversationMap = new Map<string, {
+      messages: DirectMessage[];
+      unreadCount: number;
+      participantId: string;
+      participantName: string;
+      participantAvatar: string;
+    }>();
+
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.isDeleted) return;
+
+      const message: DirectMessage = {
+        id: doc.id,
+        senderId: data.senderId || '',
+        senderName: data.senderName || '',
+        senderAvatar: data.senderAvatar || '',
+        receiverId: data.receiverId || '',
+        receiverName: data.receiverName || '',
+        receiverAvatar: data.receiverAvatar || '',
+        content: data.content || '',
+        timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString(),
+        isDeleted: data.isDeleted || false,
+        isRead: data.isRead || false,
+        type: data.type || 'text',
+      };
+
+      const conversationId = data.conversationId || [message.senderId, message.receiverId].sort().join('_');
+      const otherId = message.senderId === userId ? message.receiverId : message.senderId;
+      const otherName = (message.senderId === userId ? message.receiverName : message.senderName) || 'Family Planning Counselor';
+      const otherAvatar = (message.senderId === userId ? message.receiverAvatar : message.senderAvatar) || '';
+
+      if (!conversationMap.has(conversationId)) {
+        conversationMap.set(conversationId, {
+          messages: [],
+          unreadCount: 0,
+          participantId: otherId,
+          participantName: otherName,
+          participantAvatar: otherAvatar,
+        });
+      }
+
+      const conv = conversationMap.get(conversationId)!;
+      conv.messages.push(message);
+
+      if (message.receiverId === userId && !message.isRead) {
+        conv.unreadCount++;
+      }
+    });
+
+    conversationMap.forEach(conv => {
+      conv.messages.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    });
+
+    const conversations: InboxConversation[] = Array.from(conversationMap.entries()).map(([_, data]) => {
+      const lastMessage = data.messages[0];
+      return {
+        participantId: data.participantId,
+        participantName: data.participantName,
+        participantAvatar: data.participantAvatar,
+        lastMessage: lastMessage?.content || '',
+        lastMessageTimestamp: lastMessage?.timestamp || new Date().toISOString(),
+        unreadCount: data.unreadCount,
+        isFacilitator: true,
+      };
+    });
+
+    conversations.sort((a, b) =>
+      new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime()
+    );
+
+    console.log(`[inboxService] User has ${conversations.length} Family Planning conversations`);
+    callback(conversations);
+  }, (error) => {
+    console.error('[inboxService] Error subscribing to Family Planning inbox:', error);
     callback([]);
   });
 }

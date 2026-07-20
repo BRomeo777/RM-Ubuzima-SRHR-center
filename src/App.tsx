@@ -23,6 +23,8 @@ import BazaMugangaPage from './pages/BazaMugangaPage';
 import MpuzaPage from './pages/MpuzaPage';
 import LegalAffairsPage from './pages/LegalAffairsPage';
 import GBVPage from './pages/GBVPage';
+import AbortionPage from './pages/AbortionPage';
+import FamilyPlanningPage from './pages/FamilyPlanningPage';
 import EmergencyPage from './pages/EmergencyPage';
 import SettingsPage from './pages/SettingsPage';
 import ServicesPage from './pages/ServicesPage';
@@ -386,6 +388,8 @@ function App() {
         <Route path="/mpuza" element={<MpuzaPage />} />
         <Route path="/mpuza/legal-human-rights" element={<LegalAffairsPage />} />
         <Route path="/mpuza/gender-based-violence" element={<GBVPage />} />
+        <Route path="/mpuza/abortion" element={<AbortionPage />} />
+        <Route path="/mpuza/family-planning" element={<FamilyPlanningPage />} />
         <Route path="/emergency" element={<EmergencyPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/groups" element={<GroupsPage />} />

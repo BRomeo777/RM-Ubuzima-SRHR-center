@@ -20,7 +20,7 @@ export interface User {
   facilitatorAssignedAt?: string;
   facilitatorAssignedBy?: string;
   facilitatorRole?: string;
-  facilitatorBadges?: ('F' | 'S' | 'H' | 'L' | 'G')[];
+  facilitatorBadges?: ('F' | 'S' | 'H' | 'L' | 'G' | 'A' | 'P')[];
   facilitatorPermissions?: {
     canDeleteMessages: boolean;
     canBanUsers: boolean;
@@ -133,11 +133,13 @@ export interface Facilitator {
   bio?: string;
   role?: string;
   // Badge system
-  badges?: ('F' | 'S' | 'H' | 'L' | 'G')[]; // F = Facilitator, S = Shangazi (Big Sister), H = Healthcare Provider, L = Legal Advisor, G = GBV Counselor
-  isBigSister?: boolean; // Has 'S' badge - can work in Girls Room
-  isHealthcareProvider?: boolean; // Has 'H' badge - medical professional
-  isLegalAdvisor?: boolean; // Has 'L' badge - legal affairs advisor
-  isGBVCounselor?: boolean; // Has 'G' badge - gender-based violence counselor
+  badges?: ('F' | 'S' | 'H' | 'L' | 'G' | 'A' | 'P')[]; // F = Facilitator, S = Shangazi, H = Healthcare, L = Legal, G = GBV, A = Abortion, P = Family Planning
+  isBigSister?: boolean;
+  isHealthcareProvider?: boolean;
+  isLegalAdvisor?: boolean;
+  isGBVCounselor?: boolean;
+  isAbortionAdvisor?: boolean; // Has 'A' badge - abortion support advisor
+  isFamilyPlanningCounselor?: boolean; // Has 'P' badge - family planning counselor
 }
 
 export interface HealthcareProvider {

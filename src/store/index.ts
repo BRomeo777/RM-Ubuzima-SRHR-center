@@ -183,6 +183,8 @@ interface PersistentState {
   isUserHealthcareProvider: (userId: string) => boolean;
   isUserLegalAdvisor: (userId: string) => boolean;
   isUserGBVCounselor: (userId: string) => boolean;
+  isUserAbortionAdvisor: (userId: string) => boolean;
+  isUserFamilyPlanningCounselor: (userId: string) => boolean;
   getBigSisters: () => Facilitator[];
   // Facilitator status management
   getActiveFacilitators: () => Facilitator[];
@@ -1982,6 +1984,34 @@ export const usePersistentStore = create<PersistentState>()(
         if (facilitator?.isGBVCounselor || facilitator?.badges?.includes('G')) return true;
 
         if (savedUser?.id === userId && savedUser?.facilitatorBadges?.includes('G')) {
+          return true;
+        }
+
+        return false;
+      },
+
+      isUserAbortionAdvisor: (userId: string) => {
+        const currentSettings = get().chatSettings;
+        const savedUser = get().savedUser;
+
+        const facilitator = currentSettings?.facilitators?.find(f => f.userId === userId);
+        if (facilitator?.isAbortionAdvisor || facilitator?.badges?.includes('A')) return true;
+
+        if (savedUser?.id === userId && savedUser?.facilitatorBadges?.includes('A')) {
+          return true;
+        }
+
+        return false;
+      },
+
+      isUserFamilyPlanningCounselor: (userId: string) => {
+        const currentSettings = get().chatSettings;
+        const savedUser = get().savedUser;
+
+        const facilitator = currentSettings?.facilitators?.find(f => f.userId === userId);
+        if (facilitator?.isFamilyPlanningCounselor || facilitator?.badges?.includes('P')) return true;
+
+        if (savedUser?.id === userId && savedUser?.facilitatorBadges?.includes('P')) {
           return true;
         }
 

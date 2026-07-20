@@ -21,6 +21,8 @@ import {
   Clock,
   Scale,
   ShieldAlert,
+  HeartCrack,
+  Baby,
 } from 'lucide-react';
 import { cn } from '../utils/helpers';
 import { usePhoneBackNavigation } from '../hooks/usePhoneBackNavigation';
@@ -30,6 +32,8 @@ import {
   subscribeToShangaziInbox,
   subscribeToLegalInbox,
   subscribeToGBVInbox,
+  subscribeToAbortionInbox,
+  subscribeToFamilyPlanningInbox,
   subscribeToConversation,
   sendDirectMessage,
   markMessagesAsRead,
@@ -37,8 +41,8 @@ import {
 } from '../services/facilitatorInboxService';
 
 // Types for view state
-type ViewState = 'menu' | 'inbox-list' | 'shangazi-list' | 'legal-list' | 'gbv-list' | 'chat';
-type ChatContext = 'inbox' | 'shangazi' | 'legal' | 'gbv';
+type ViewState = 'menu' | 'inbox-list' | 'shangazi-list' | 'legal-list' | 'gbv-list' | 'abortion-list' | 'family-planning-list' | 'chat';
+type ChatContext = 'inbox' | 'shangazi' | 'legal' | 'gbv' | 'abortion' | 'family-planning';
 
 // Extended conversation type for facilitator
 interface FacilitatorConversation extends InboxConversation {
@@ -50,7 +54,7 @@ export default function FacilitatorInboxPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, setCurrentPage } = useEphemeralStore();
-  const { chatSettings, isUserBigSister, isUserLegalAdvisor, isUserGBVCounselor } = usePersistentStore();
+  const { chatSettings, isUserBigSister, isUserLegalAdvisor, isUserGBVCounselor, isUserAbortionAdvisor, isUserFamilyPlanningCounselor } = usePersistentStore();
 
   const currentUser = session?.user;
   const isBigSister = currentUser?.id && isUserBigSister
@@ -61,6 +65,12 @@ export default function FacilitatorInboxPage() {
     : false;
   const isGBVCounselor = currentUser?.id && isUserGBVCounselor
     ? isUserGBVCounselor(currentUser.id)
+    : false;
+  const isAbortionAdvisor = currentUser?.id && isUserAbortionAdvisor
+    ? isUserAbortionAdvisor(currentUser.id)
+    : false;
+  const isFamilyPlanningCounselor = currentUser?.id && isUserFamilyPlanningCounselor
+    ? isUserFamilyPlanningCounselor(currentUser.id)
     : false;
 
   // View state
@@ -73,6 +83,8 @@ export default function FacilitatorInboxPage() {
   const [shangaziConversations, setShangaziConversations] = useState<FacilitatorConversation[]>([]);
   const [legalConversations, setLegalConversations] = useState<FacilitatorConversation[]>([]);
   const [gbvConversations, setGbvConversations] = useState<FacilitatorConversation[]>([]);
+  const [abortionConversations, setAbortionConversations] = useState<FacilitatorConversation[]>([]);
+  const [familyPlanningConversations, setFamilyPlanningConversations] = useState<FacilitatorConversation[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,7 +93,7 @@ export default function FacilitatorInboxPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, shangazi: 0, legal: 0, gbv: 0 });
+  const [unreadCounts, setUnreadCounts] = useState({ inbox: 0, shangazi: 0, legal: 0, gbv: 0, abortion: 0, familyPlanning: 0 });
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
 
@@ -95,10 +107,10 @@ export default function FacilitatorInboxPage() {
     onClose: () => {
       if (viewState === 'chat') {
         setViewState(
-          activeTab === 'shangazi' ? 'shangazi-list' : activeTab === 'legal' ? 'legal-list' : activeTab === 'gbv' ? 'gbv-list' : 'inbox-list'
+          activeTab === 'shangazi' ? 'shangazi-list' : activeTab === 'legal' ? 'legal-list' : activeTab === 'gbv' ? 'gbv-list' : activeTab === 'abortion' ? 'abortion-list' : activeTab === 'family-planning' ? 'family-planning-list' : 'inbox-list'
         );
         setSelectedUser(null);
-      } else if (viewState === 'inbox-list' || viewState === 'shangazi-list' || viewState === 'legal-list' || viewState === 'gbv-list') {
+      } else if (viewState === 'inbox-list' || viewState === 'shangazi-list' || viewState === 'legal-list' || viewState === 'gbv-list' || viewState === 'abortion-list' || viewState === 'family-planning-list') {
         setViewState('menu');
       }
     },
@@ -208,6 +220,48 @@ export default function FacilitatorInboxPage() {
       unsubscribe();
     };
   }, [currentUser?.id, isGBVCounselor]);
+
+  // Subscribe to Abortion conversations (only for Abortion Advisors)
+  useEffect(() => {
+    if (!currentUser?.id || !isAbortionAdvisor) return;
+
+    console.log('[FacilitatorInbox] Setting up Abortion subscription');
+
+    const unsubscribe = subscribeToAbortionInbox(currentUser.id, (convs) => {
+      console.log(`[FacilitatorInbox] Received ${convs.length} Abortion conversations`);
+      const conversationsWithContext = convs.map(c => ({ ...c, context: 'abortion' as const }));
+      setAbortionConversations(conversationsWithContext);
+
+      const unread = conversationsWithContext.reduce((sum, c) => sum + c.unreadCount, 0);
+      setUnreadCounts(prev => ({ ...prev, abortion: unread }));
+    });
+
+    return () => {
+      console.log('[FacilitatorInbox] Cleaning up Abortion subscription');
+      unsubscribe();
+    };
+  }, [currentUser?.id, isAbortionAdvisor]);
+
+  // Subscribe to Family Planning conversations (only for Family Planning Counselors)
+  useEffect(() => {
+    if (!currentUser?.id || !isFamilyPlanningCounselor) return;
+
+    console.log('[FacilitatorInbox] Setting up Family Planning subscription');
+
+    const unsubscribe = subscribeToFamilyPlanningInbox(currentUser.id, (convs) => {
+      console.log(`[FacilitatorInbox] Received ${convs.length} Family Planning conversations`);
+      const conversationsWithContext = convs.map(c => ({ ...c, context: 'family-planning' as const }));
+      setFamilyPlanningConversations(conversationsWithContext);
+
+      const unread = conversationsWithContext.reduce((sum, c) => sum + c.unreadCount, 0);
+      setUnreadCounts(prev => ({ ...prev, familyPlanning: unread }));
+    });
+
+    return () => {
+      console.log('[FacilitatorInbox] Cleaning up Family Planning subscription');
+      unsubscribe();
+    };
+  }, [currentUser?.id, isFamilyPlanningCounselor]);
 
   // Subscribe to messages when a user is selected
   useEffect(() => {
@@ -335,6 +389,12 @@ export default function FacilitatorInboxPage() {
     c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const filteredGBV = gbvConversations.filter(c =>
+    c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredAbortion = abortionConversations.filter(c =>
+    c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredFamilyPlanning = familyPlanningConversations.filter(c =>
     c.participantName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -483,6 +543,56 @@ export default function FacilitatorInboxPage() {
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </button>
         )}
+
+        {/* Abortion Option (Only for Abortion Advisors) */}
+        {isAbortionAdvisor && (
+          <button
+            onClick={() => setViewState('abortion-list')}
+            className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-rose-200 transition-all text-left relative"
+          >
+            <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center relative">
+              <HeartCrack className="w-7 h-7 text-rose-600" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-rose-600 rounded-full flex items-center justify-center border-2 border-white">
+                <span className="text-white text-xs font-bold">A</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 text-lg">{t('mpuza.abortion')}</h3>
+              <p className="text-sm text-gray-500">{t('mpuza.abortionDesc')}</p>
+            </div>
+            {unreadCounts.abortion > 0 && (
+              <div className="absolute top-4 right-14 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">{unreadCounts.abortion}</span>
+              </div>
+            )}
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
+        )}
+
+        {/* Family Planning Option (Only for Family Planning Counselors) */}
+        {isFamilyPlanningCounselor && (
+          <button
+            onClick={() => setViewState('family-planning-list')}
+            className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 transition-all text-left relative"
+          >
+            <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center relative">
+              <Baby className="w-7 h-7 text-emerald-600" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center border-2 border-white">
+                <span className="text-white text-xs font-bold">P</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 text-lg">{t('mpuza.familyPlanning')}</h3>
+              <p className="text-sm text-gray-500">{t('mpuza.familyPlanningDesc')}</p>
+            </div>
+            {unreadCounts.familyPlanning > 0 && (
+              <div className="absolute top-4 right-14 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">{unreadCounts.familyPlanning}</span>
+              </div>
+            )}
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
+        )}
       </div>
 
       {/* Info Card */}
@@ -503,13 +613,15 @@ export default function FacilitatorInboxPage() {
     const isShangazi = type === 'shangazi';
     const isLegal = type === 'legal';
     const isGBV = type === 'gbv';
-    const title = isShangazi ? t('girlsRoom.bazaShangazi') : isLegal ? t('mpuza.legalHumanRights') : isGBV ? t('mpuza.genderBasedViolence') : t('chat.inbox');
-    const filtered = isShangazi ? filteredShangazi : isLegal ? filteredLegal : isGBV ? filteredGBV : filteredInbox;
-    const headerBg = isShangazi ? 'bg-pink-50 border-pink-200' : isLegal ? 'bg-indigo-50 border-indigo-200' : isGBV ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
-    const emptyIconBg = isShangazi ? 'bg-pink-100' : isLegal ? 'bg-indigo-100' : isGBV ? 'bg-amber-100' : 'bg-blue-100';
-    const emptyIconColor = isShangazi ? 'text-pink-400' : isLegal ? 'text-indigo-400' : isGBV ? 'text-amber-400' : 'text-blue-400';
-    const badgeBg = isShangazi ? 'bg-pink-500' : isLegal ? 'bg-indigo-600' : isGBV ? 'bg-amber-600' : 'bg-blue-500';
-    const ringColor = isShangazi ? '#ec4899' : isLegal ? '#6366f1' : isGBV ? '#d97706' : '#3b82f6';
+    const isAbortion = type === 'abortion';
+    const isFamilyPlanning = type === 'family-planning';
+    const title = isShangazi ? t('girlsRoom.bazaShangazi') : isLegal ? t('mpuza.legalHumanRights') : isGBV ? t('mpuza.genderBasedViolence') : isAbortion ? t('mpuza.abortion') : isFamilyPlanning ? t('mpuza.familyPlanning') : t('chat.inbox');
+    const filtered = isShangazi ? filteredShangazi : isLegal ? filteredLegal : isGBV ? filteredGBV : isAbortion ? filteredAbortion : isFamilyPlanning ? filteredFamilyPlanning : filteredInbox;
+    const headerBg = isShangazi ? 'bg-pink-50 border-pink-200' : isLegal ? 'bg-indigo-50 border-indigo-200' : isGBV ? 'bg-amber-50 border-amber-200' : isAbortion ? 'bg-rose-50 border-rose-200' : isFamilyPlanning ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200';
+    const emptyIconBg = isShangazi ? 'bg-pink-100' : isLegal ? 'bg-indigo-100' : isGBV ? 'bg-amber-100' : isAbortion ? 'bg-rose-100' : isFamilyPlanning ? 'bg-emerald-100' : 'bg-blue-100';
+    const emptyIconColor = isShangazi ? 'text-pink-400' : isLegal ? 'text-indigo-400' : isGBV ? 'text-amber-400' : isAbortion ? 'text-rose-400' : isFamilyPlanning ? 'text-emerald-400' : 'text-blue-400';
+    const badgeBg = isShangazi ? 'bg-pink-500' : isLegal ? 'bg-indigo-600' : isGBV ? 'bg-amber-600' : isAbortion ? 'bg-rose-600' : isFamilyPlanning ? 'bg-emerald-600' : 'bg-blue-500';
+    const ringColor = isShangazi ? '#ec4899' : isLegal ? '#6366f1' : isGBV ? '#d97706' : isAbortion ? '#e11d48' : isFamilyPlanning ? '#059669' : '#3b82f6';
 
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
@@ -561,6 +673,10 @@ export default function FacilitatorInboxPage() {
                   <Scale className={cn('w-10 h-10', emptyIconColor)} />
                 ) : isGBV ? (
                   <ShieldAlert className={cn('w-10 h-10', emptyIconColor)} />
+                ) : isAbortion ? (
+                  <HeartCrack className={cn('w-10 h-10', emptyIconColor)} />
+                ) : isFamilyPlanning ? (
+                  <Baby className={cn('w-10 h-10', emptyIconColor)} />
                 ) : (
                   <Inbox className={cn('w-10 h-10', emptyIconColor)} />
                 )}
@@ -614,9 +730,9 @@ export default function FacilitatorInboxPage() {
                     {conv.lastMessage}
                   </p>
                 </div>
-                {(isShangazi || isLegal || isGBV) && (
+                {(isShangazi || isLegal || isGBV || isAbortion || isFamilyPlanning) && (
                   <div className={cn('flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center', badgeBg)}>
-                    <span className="text-white text-xs font-bold">{isShangazi ? 'S' : isLegal ? 'L' : 'G'}</span>
+                    <span className="text-white text-xs font-bold">{isShangazi ? 'S' : isLegal ? 'L' : isGBV ? 'G' : isAbortion ? 'A' : 'P'}</span>
                   </div>
                 )}
               </button>
@@ -633,12 +749,14 @@ export default function FacilitatorInboxPage() {
     const isShangazi = activeTab === 'shangazi';
     const isLegal = activeTab === 'legal';
     const isGBV = activeTab === 'gbv';
-    const headerBg = isShangazi ? 'bg-pink-50 border-pink-200' : isLegal ? 'bg-indigo-50 border-indigo-200' : isGBV ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
-    const bubbleOwn = isShangazi ? 'bg-pink-500 text-white rounded-br-sm' : isLegal ? 'bg-indigo-600 text-white rounded-br-sm' : isGBV ? 'bg-amber-600 text-white rounded-br-sm' : 'bg-blue-500 text-white rounded-br-sm';
-    const sendBtn = isShangazi ? 'bg-pink-500 hover:bg-pink-600 disabled:bg-pink-300' : isLegal ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300' : isGBV ? 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300' : 'bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300';
-    const emptyIconBg = isShangazi ? 'bg-pink-100' : isLegal ? 'bg-indigo-100' : isGBV ? 'bg-amber-100' : 'bg-blue-100';
-    const emptyIconColor = isShangazi ? 'text-pink-400' : isLegal ? 'text-indigo-400' : isGBV ? 'text-amber-400' : 'text-blue-400';
-    const backList: ViewState = isShangazi ? 'shangazi-list' : isLegal ? 'legal-list' : isGBV ? 'gbv-list' : 'inbox-list';
+    const isAbortion = activeTab === 'abortion';
+    const isFamilyPlanning = activeTab === 'family-planning';
+    const headerBg = isShangazi ? 'bg-pink-50 border-pink-200' : isLegal ? 'bg-indigo-50 border-indigo-200' : isGBV ? 'bg-amber-50 border-amber-200' : isAbortion ? 'bg-rose-50 border-rose-200' : isFamilyPlanning ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200';
+    const bubbleOwn = isShangazi ? 'bg-pink-500 text-white rounded-br-sm' : isLegal ? 'bg-indigo-600 text-white rounded-br-sm' : isGBV ? 'bg-amber-600 text-white rounded-br-sm' : isAbortion ? 'bg-rose-600 text-white rounded-br-sm' : isFamilyPlanning ? 'bg-emerald-600 text-white rounded-br-sm' : 'bg-blue-500 text-white rounded-br-sm';
+    const sendBtn = isShangazi ? 'bg-pink-500 hover:bg-pink-600 disabled:bg-pink-300' : isLegal ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300' : isGBV ? 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300' : isAbortion ? 'bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300' : isFamilyPlanning ? 'bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300' : 'bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300';
+    const emptyIconBg = isShangazi ? 'bg-pink-100' : isLegal ? 'bg-indigo-100' : isGBV ? 'bg-amber-100' : isAbortion ? 'bg-rose-100' : isFamilyPlanning ? 'bg-emerald-100' : 'bg-blue-100';
+    const emptyIconColor = isShangazi ? 'text-pink-400' : isLegal ? 'text-indigo-400' : isGBV ? 'text-amber-400' : isAbortion ? 'text-rose-400' : isFamilyPlanning ? 'text-emerald-400' : 'text-blue-400';
+    const backList: ViewState = isShangazi ? 'shangazi-list' : isLegal ? 'legal-list' : isGBV ? 'gbv-list' : isAbortion ? 'abortion-list' : isFamilyPlanning ? 'family-planning-list' : 'inbox-list';
 
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
@@ -667,9 +785,9 @@ export default function FacilitatorInboxPage() {
                 }}
                 loading="eager"
               />
-              {(isShangazi || isLegal || isGBV) && (
-                <div className={cn('absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white', isShangazi ? 'bg-pink-500' : isLegal ? 'bg-indigo-600' : 'bg-amber-600')}>
-                  <span className="text-white text-[10px] font-bold">{isShangazi ? 'S' : isLegal ? 'L' : 'G'}</span>
+              {(isShangazi || isLegal || isGBV || isAbortion || isFamilyPlanning) && (
+                <div className={cn('absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white', isShangazi ? 'bg-pink-500' : isLegal ? 'bg-indigo-600' : isGBV ? 'bg-amber-600' : isAbortion ? 'bg-rose-600' : 'bg-emerald-600')}>
+                  <span className="text-white text-[10px] font-bold">{isShangazi ? 'S' : isLegal ? 'L' : isGBV ? 'G' : isAbortion ? 'A' : 'P'}</span>
                 </div>
               )}
             </div>
@@ -874,6 +992,10 @@ export default function FacilitatorInboxPage() {
       return renderConversationList(legalConversations, 'legal');
     case 'gbv-list':
       return renderConversationList(gbvConversations, 'gbv');
+    case 'abortion-list':
+      return renderConversationList(abortionConversations, 'abortion');
+    case 'family-planning-list':
+      return renderConversationList(familyPlanningConversations, 'family-planning');
     case 'chat':
       return renderChat();
     default:
