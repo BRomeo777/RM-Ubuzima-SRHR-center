@@ -25,6 +25,7 @@ import {
   playEndTone,
   type CallAudioPipeline,
 } from '../utils/callAudio';
+import { tuneAudioSdp, applySenderBitrate } from '../utils/callSdp';
 import type { CallSignal, CallPhase, CallQuality } from '../types';
 import type { Unsubscribe } from 'firebase/firestore';
 
@@ -333,8 +334,18 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
           if (stream) attachRemoteStream(stream);
         };
 
-        const offer = await pc.createOffer({ offerToReceiveAudio: true });
+        const rawOffer = await pc.createOffer({ offerToReceiveAudio: true });
+
+        // Tune Opus for low data and loss resilience before it is negotiated.
+        const offer = {
+          type: rawOffer.type,
+          sdp: tuneAudioSdp(rawOffer.sdp || ''),
+        };
         await pc.setLocalDescription(offer);
+
+        // Belt-and-braces cap that the browser enforces directly.
+        const audioSender = pc.getSenders().find((s) => s.track?.kind === 'audio');
+        if (audioSender) await applySenderBitrate(audioSender);
 
         const callId = await createCall({
           callerId: params.callerId,
@@ -468,8 +479,18 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
           })
         );
 
-        const answer = await pc.createAnswer();
+        const rawAnswer = await pc.createAnswer();
+
+        // Match the caller's low-data Opus configuration.
+        const answer = {
+          type: rawAnswer.type,
+          sdp: tuneAudioSdp(rawAnswer.sdp || ''),
+        };
         await pc.setLocalDescription(answer);
+
+        const audioSender = pc.getSenders().find((s) => s.track?.kind === 'audio');
+        if (audioSender) await applySenderBitrate(audioSender);
+
         await flushPendingCandidates();
 
         await acceptCall(incoming.id, {

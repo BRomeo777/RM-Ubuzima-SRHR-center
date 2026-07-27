@@ -11,7 +11,7 @@
  *   default. The facilitator can still switch the mode once connected.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck, Mic, X } from 'lucide-react';
 import { useEphemeralStore, usePersistentStore } from '../store';
@@ -62,6 +62,23 @@ export default function CallManager() {
 
   const isBusy = phase !== 'idle' && phase !== 'ended';
 
+  /**
+   * Read inside the Firestore listener without making it a dependency.
+   * Resubscribing on every phase change caused the listener to replay a call
+   * we had just answered and wrongly flag it as busy.
+   */
+  const busyRef = useRef(false);
+  useEffect(() => {
+    busyRef.current = isBusy;
+  }, [isBusy]);
+
+  /**
+   * Calls this device has already acted on. The accepted call stays 'ringing'
+   * in Firestore for the moment it takes to capture the mic and build an
+   * answer, so without this guard we would mark our own call busy and kill it.
+   */
+  const handledCallIds = useRef<Set<string>>(new Set());
+
   // ============================================
   // INCOMING CALLS
   // ============================================
@@ -74,8 +91,12 @@ export default function CallManager() {
         return;
       }
 
-      // Already on a call: tell the caller we're busy rather than ringing.
-      if (isBusy) {
+      // Never react twice to a call we are already answering or declining.
+      if (handledCallIds.current.has(incomingCall.id)) return;
+
+      // Genuinely on another call: tell the caller we're busy.
+      if (busyRef.current) {
+        handledCallIds.current.add(incomingCall.id);
         void endCall(incomingCall.id, 'busy');
         return;
       }
@@ -84,7 +105,7 @@ export default function CallManager() {
     });
 
     return () => unsubscribe();
-  }, [currentUser?.id, isBusy]);
+  }, [currentUser?.id]);
 
   // ============================================
   // OUTGOING REQUESTS FROM PAGES
@@ -149,6 +170,8 @@ export default function CallManager() {
   const handleAccept = useCallback(() => {
     if (!incoming) return;
     const toAnswer = incoming;
+    // Claim it before answering so the listener cannot flag it busy.
+    handledCallIds.current.add(toAnswer.id);
     setIncoming(null);
     void answerCall(toAnswer);
   }, [incoming, answerCall]);
@@ -156,6 +179,7 @@ export default function CallManager() {
   const handleDecline = useCallback(() => {
     if (!incoming) return;
     const toDecline = incoming;
+    handledCallIds.current.add(toDecline.id);
     setIncoming(null);
     void declineCall(toDecline);
   }, [incoming, declineCall]);
