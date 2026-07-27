@@ -61,6 +61,21 @@ function buildIceServers(): RTCIceServer[] {
   return servers;
 }
 
+/**
+ * Connection config.
+ *
+ * `iceCandidatePoolSize` makes the browser start gathering candidates as soon
+ * as the connection object exists, rather than waiting for the offer. By the
+ * time we need them they are usually already available, which is a large part
+ * of getting a near-instant connect.
+ */
+function buildPeerConfig(): RTCConfiguration {
+  return {
+    iceServers: buildIceServers(),
+    iceCandidatePoolSize: 4,
+  };
+}
+
 export interface UseCallResult {
   phase: CallPhase;
   call: CallSignal | null;
@@ -121,6 +136,15 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
   const statsRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const connectedAtRef = useRef<number | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  /**
+   * Our own candidates gathered before the call document exists.
+   *
+   * ICE gathering starts the moment setLocalDescription runs, which is before
+   * Firestore has given us a call id to write them against. Without this
+   * buffer those candidates were dropped, and since the fast local-network
+   * candidates arrive first, calls could hang on 'connecting' forever.
+   */
+  const outboundIceRef = useRef<RTCIceCandidateInit[]>([]);
   const teardownRef = useRef<() => void>(() => {});
 
   /** Stop every resource this call is holding. Safe to call repeatedly. */
@@ -158,11 +182,13 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
       pcRef.current.onicecandidate = null;
       pcRef.current.ontrack = null;
       pcRef.current.onconnectionstatechange = null;
+      pcRef.current.oniceconnectionstatechange = null;
       pcRef.current.close();
       pcRef.current = null;
     }
     connectedAtRef.current = null;
     pendingIceRef.current = [];
+    outboundIceRef.current = [];
   }, []);
 
   teardownRef.current = teardown;
@@ -229,9 +255,57 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
     remoteAudioRef.current = audio;
   }, []);
 
+  /**
+   * Mark the call live. Safe to call more than once.
+   *
+   * Both `connectionState` and `iceConnectionState` are watched because Safari
+   * and older WebKit do not fire `connectionstatechange` dependably; without
+   * the fallback a call could carry audio while the UI still said 'connecting'.
+   */
+  const markConnected = useCallback(() => {
+    if (ringbackRef.current) {
+      ringbackRef.current.stop();
+      ringbackRef.current = null;
+    }
+    setPhase((current) => (current === 'connected' ? current : 'connected'));
+    startDurationTimer();
+    startQualityMonitor();
+  }, [startDurationTimer, startQualityMonitor]);
+
+  /** Wire up connection monitoring, including the WebKit fallback. */
+  const watchConnection = useCallback(
+    (pc: RTCPeerConnection, onFailed: () => void) => {
+      const evaluate = () => {
+        const state = pc.connectionState;
+        const iceState = pc.iceConnectionState;
+
+        if (state === 'connected' || iceState === 'connected' || iceState === 'completed') {
+          markConnected();
+          return;
+        }
+
+        if (state === 'failed' || iceState === 'failed') {
+          onFailed();
+          return;
+        }
+
+        if (state === 'disconnected' || iceState === 'disconnected') {
+          setQuality('poor');
+        }
+      };
+
+      pc.onconnectionstatechange = evaluate;
+      pc.oniceconnectionstatechange = evaluate;
+
+      // In case a state was reached before these handlers were attached.
+      evaluate();
+    },
+    [markConnected]
+  );
+
   const createPeerConnection = useCallback(
     (callId: string, role: 'caller' | 'callee') => {
-      const pc = new RTCPeerConnection({ iceServers: buildIceServers() });
+      const pc = new RTCPeerConnection(buildPeerConfig());
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -244,34 +318,17 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
         if (stream) attachRemoteStream(stream);
       };
 
-      pc.onconnectionstatechange = () => {
-        const state = pc.connectionState;
-        console.log('[useCall] Connection state:', state);
-
-        if (state === 'connected') {
-          if (ringbackRef.current) {
-            ringbackRef.current.stop();
-            ringbackRef.current = null;
-          }
-          setPhase('connected');
-          startDurationTimer();
-          startQualityMonitor();
-        } else if (state === 'failed') {
-          setError(
-            'Could not connect. The network may be blocking the call.'
-          );
-          setPhase('ended');
-          void endCall(callId, 'failed', currentUserId);
-          teardown();
-        } else if (state === 'disconnected') {
-          setQuality('poor');
-        }
-      };
+      watchConnection(pc, () => {
+        setError('Could not connect. The network may be blocking the call.');
+        setPhase('ended');
+        void endCall(callId, 'failed', currentUserId);
+        teardown();
+      });
 
       pcRef.current = pc;
       return pc;
     },
-    [attachRemoteStream, startDurationTimer, startQualityMonitor, teardown, currentUserId]
+    [attachRemoteStream, watchConnection, teardown, currentUserId]
   );
 
   /** Buffer ICE candidates that arrive before the remote description is set. */
@@ -324,14 +381,38 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
         audioRef.current = audio;
         setIsMuted(false);
 
-        // Create the connection before we have a call id by deferring ICE.
-        const pc = new RTCPeerConnection({ iceServers: buildIceServers() });
+        const pc = new RTCPeerConnection(buildPeerConfig());
         pcRef.current = pc;
+        outboundIceRef.current = [];
         pc.addTrack(audio.outboundTrack);
 
         pc.ontrack = (event) => {
           const [stream] = event.streams;
           if (stream) attachRemoteStream(stream);
+        };
+
+        // Watch from the start so a fast connect cannot be missed.
+        watchConnection(pc, () => {
+          setError('Could not connect. The network may be blocking the call.');
+          setPhase('ended');
+          const id = callIdRef.current;
+          if (id) void endCall(id, 'failed', params.callerId);
+          teardown();
+        });
+
+        // Attach this BEFORE setLocalDescription, which is what starts ICE
+        // gathering. Candidates found before the call document exists are
+        // buffered and sent the moment we have an id.
+        pc.onicecandidate = (event) => {
+          if (!event.candidate) return;
+          const candidate = event.candidate.toJSON();
+          const id = callIdRef.current;
+
+          if (id) {
+            void addIceCandidate(id, 'caller', candidate);
+          } else {
+            outboundIceRef.current.push(candidate);
+          }
         };
 
         const rawOffer = await pc.createOffer({ offerToReceiveAudio: true });
@@ -362,29 +443,14 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
         });
         callIdRef.current = callId;
 
-        // Now that we have an id, wire up ICE and connection monitoring.
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            void addIceCandidate(callId, 'caller', event.candidate.toJSON());
-          }
-        };
-        pc.onconnectionstatechange = () => {
-          const state = pc.connectionState;
-          if (state === 'connected') {
-            if (ringbackRef.current) {
-              ringbackRef.current.stop();
-              ringbackRef.current = null;
-            }
-            setPhase('connected');
-            startDurationTimer();
-            startQualityMonitor();
-          } else if (state === 'failed') {
-            setError('Could not connect. The network may be blocking the call.');
-            setPhase('ended');
-            void endCall(callId, 'failed', params.callerId);
-            teardown();
-          }
-        };
+        // Send everything gathered while we were waiting on Firestore. These
+        // are the fastest candidates, so getting them out immediately is what
+        // allows a local-network call to connect almost instantly.
+        const buffered = outboundIceRef.current;
+        outboundIceRef.current = [];
+        await Promise.all(
+          buffered.map((candidate) => addIceCandidate(callId, 'caller', candidate))
+        );
 
         setPhase('ringing');
         ringbackRef.current = startRingback();
@@ -436,8 +502,7 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
       attachRemoteStream,
       addRemoteCandidate,
       flushPendingCandidates,
-      startDurationTimer,
-      startQualityMonitor,
+      watchConnection,
       teardown,
     ]
   );
