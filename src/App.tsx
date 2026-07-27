@@ -12,6 +12,7 @@ import Footer from './components/layout/Footer';
 import DecoyMode from './components/layout/DecoyMode';
 import FloatingRMAdminAI from './components/FloatingRMAdminAI';
 import { IOSInstallBanner } from './components/IOSInstallBanner';
+import CallManager from './components/CallManager';
 
 // Pages
 import AuthPage from './pages/AuthPage';
@@ -365,6 +366,9 @@ function App() {
           <Route path="/facilitator" element={<FacilitatorPanelPage />} />
           <Route path="/terms" element={<TermsConditionsPage onBack={() => navigate(-1)} />} />
         </Routes>
+
+        {/* Calls must still ring on admin/facilitator screens */}
+        <CallManager />
       </div>
     );
   }
@@ -415,6 +419,9 @@ function App() {
 
       {/* iOS Install Banner - Shows for iPhone/iPad users who haven't installed */}
       <IOSInstallBanner />
+
+      {/* Voice calls - global so an incoming call rings on any page */}
+      <CallManager />
     </div>
   );
 }

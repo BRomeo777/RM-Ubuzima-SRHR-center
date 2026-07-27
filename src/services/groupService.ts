@@ -895,7 +895,10 @@ export function subscribeToGroupMessages(
         isFacilitator: data.isFacilitator || false,
         facilitatorBadge: data.facilitatorBadge || null,
         reactions: data.reactions || [],
-        replyTo: data.replyTo || undefined
+        replyTo: data.replyTo || undefined,
+        voiceData: data.voiceData || undefined,
+        voiceDuration: data.voiceDuration || undefined,
+        voiceProfileId: data.voiceProfileId || undefined
       } as GroupMessage;
     });
     
@@ -950,7 +953,7 @@ export async function sendGroupMessage(
       return null;
     }
     
-    const docData = {
+    const docData: Record<string, any> = {
       groupId: messageData.groupId,
       userId: messageData.userId,
       userName: messageData.userName,
@@ -964,6 +967,12 @@ export async function sendGroupMessage(
       replyTo: messageData.replyTo || null,
       timestamp: serverTimestamp()
     };
+
+    if (messageData.type === 'voice' && messageData.voiceData) {
+      docData.voiceData = messageData.voiceData;
+      docData.voiceDuration = messageData.voiceDuration;
+      docData.voiceProfileId = messageData.voiceProfileId;
+    }
     
     const docRef = await addDoc(messagesRef, docData);
     
@@ -2491,7 +2500,10 @@ export function subscribeToGroupMessagesWithAI(
         isFacilitator: data.isFacilitator || false,
         facilitatorBadge: data.facilitatorBadge || null,
         reactions: data.reactions || [],
-        replyTo: data.replyTo || undefined
+        replyTo: data.replyTo || undefined,
+        voiceData: data.voiceData || undefined,
+        voiceDuration: data.voiceDuration || undefined,
+        voiceProfileId: data.voiceProfileId || undefined
       } as GroupMessage;
     });
 

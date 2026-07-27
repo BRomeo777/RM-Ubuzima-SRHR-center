@@ -190,7 +190,8 @@ export async function sendDirectMessage(
   senderAvatar: string,
   receiverId: string,
   receiverName: string,
-  content: string
+  content: string,
+  voiceData?: { voiceData: string; voiceDuration: number; voiceProfileId: string; type: 'voice' }
 ): Promise<DirectMessage | null> {
   console.log('[inboxService] Sending DM...');
   console.log(`[inboxService] From: ${senderName} (${senderId}) -> To: ${receiverName} (${receiverId})`);
@@ -207,7 +208,9 @@ export async function sendDirectMessage(
     // Participants array for array-contains queries
     const participants = [senderId, receiverId];
 
-    const messageData = {
+    const messageType = voiceData?.type || 'text';
+
+    const messageData: Record<string, any> = {
       senderId,
       senderName: senderName || 'Anonymous',
       senderAvatar: senderAvatar || '',
@@ -219,8 +222,14 @@ export async function sendDirectMessage(
       timestamp: serverTimestamp(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      messageData.voiceData = voiceData.voiceData;
+      messageData.voiceDuration = voiceData.voiceDuration;
+      messageData.voiceProfileId = voiceData.voiceProfileId;
+    }
 
     console.log('[inboxService] Adding document to Firestore...');
     const docRef = await addDoc(collection(db, INBOX_COLLECTION), messageData);
@@ -245,7 +254,7 @@ export async function sendDirectMessage(
       }
     }, 100);
 
-    return {
+    const result: DirectMessage = {
       id: docRef.id,
       senderId,
       senderName: messageData.senderName,
@@ -256,8 +265,16 @@ export async function sendDirectMessage(
       timestamp: new Date().toISOString(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      result.voiceData = voiceData.voiceData;
+      result.voiceDuration = voiceData.voiceDuration;
+      result.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    return result;
   } catch (error: any) {
     console.error('[inboxService] Error sending DM:', error);
     console.error('[inboxService] Error code:', error.code);
@@ -276,7 +293,8 @@ export async function sendShangaziMessage(
   senderAvatar: string,
   receiverId: string,
   receiverName: string,
-  content: string
+  content: string,
+  voiceData?: { voiceData: string; voiceDuration: number; voiceProfileId: string; type: 'voice' }
 ): Promise<DirectMessage | null> {
   console.log('[inboxService] Sending Shangazi message...');
   console.log(`[inboxService] From: ${senderName} (${senderId}) -> To Big Sister: ${receiverName} (${receiverId})`);
@@ -293,7 +311,9 @@ export async function sendShangaziMessage(
     // Participants array for array-contains queries
     const participants = [senderId, receiverId];
 
-    const messageData = {
+    const messageType = voiceData?.type || 'text';
+
+    const messageData: Record<string, any> = {
       senderId,
       senderName: senderName || 'Anonymous',
       senderAvatar: senderAvatar || '',
@@ -305,15 +325,21 @@ export async function sendShangaziMessage(
       timestamp: serverTimestamp(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      messageData.voiceData = voiceData.voiceData;
+      messageData.voiceDuration = voiceData.voiceDuration;
+      messageData.voiceProfileId = voiceData.voiceProfileId;
+    }
 
     console.log('[inboxService] Adding Shangazi document to Firestore...');
     const docRef = await addDoc(collection(db, SHANGAZI_COLLECTION), messageData);
 
     console.log('[inboxService] Shangazi message sent successfully:', docRef.id);
 
-    return {
+    const result: DirectMessage = {
       id: docRef.id,
       senderId,
       senderName: messageData.senderName,
@@ -324,8 +350,16 @@ export async function sendShangaziMessage(
       timestamp: new Date().toISOString(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      result.voiceData = voiceData.voiceData;
+      result.voiceDuration = voiceData.voiceDuration;
+      result.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    return result;
   } catch (error: any) {
     console.error('[inboxService] Error sending Shangazi message:', error);
     console.error('[inboxService] Error code:', error.code);
@@ -374,6 +408,9 @@ export function subscribeToShangaziConversation(
           isDeleted: data.isDeleted || false,
           isRead: data.isRead || false,
           type: data.type || 'text',
+          voiceData: data.voiceData || undefined,
+          voiceDuration: data.voiceDuration || undefined,
+          voiceProfileId: data.voiceProfileId || undefined,
         } as DirectMessage;
       })
       .filter(msg => {
@@ -446,6 +483,9 @@ export function subscribeToConversation(
           isDeleted: data.isDeleted || false,
           isRead: data.isRead || false,
           type: data.type || 'text',
+          voiceData: data.voiceData || undefined,
+          voiceDuration: data.voiceDuration || undefined,
+          voiceProfileId: data.voiceProfileId || undefined,
         } as DirectMessage;
       })
       .filter(msg => {
@@ -799,7 +839,8 @@ export async function sendLegalMessage(
   senderAvatar: string,
   receiverId: string,
   receiverName: string,
-  content: string
+  content: string,
+  voiceData?: { voiceData: string; voiceDuration: number; voiceProfileId: string; type: 'voice' }
 ): Promise<DirectMessage | null> {
   console.log('[inboxService] Sending Legal Affairs message...');
 
@@ -811,7 +852,9 @@ export async function sendLegalMessage(
     const conversationId = [senderId, receiverId].sort().join('_');
     const participants = [senderId, receiverId];
 
-    const messageData = {
+    const messageType = voiceData?.type || 'text';
+
+    const messageData: Record<string, any> = {
       senderId,
       senderName: senderName || 'Anonymous',
       senderAvatar: senderAvatar || '',
@@ -823,13 +866,19 @@ export async function sendLegalMessage(
       timestamp: serverTimestamp(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      messageData.voiceData = voiceData.voiceData;
+      messageData.voiceDuration = voiceData.voiceDuration;
+      messageData.voiceProfileId = voiceData.voiceProfileId;
+    }
 
     const docRef = await addDoc(collection(db, LEGAL_AFFAIRS_COLLECTION), messageData);
     console.log('[inboxService] Legal Affairs message sent successfully:', docRef.id);
 
-    return {
+    const result: DirectMessage = {
       id: docRef.id,
       senderId,
       senderName: messageData.senderName,
@@ -840,8 +889,16 @@ export async function sendLegalMessage(
       timestamp: new Date().toISOString(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      result.voiceData = voiceData.voiceData;
+      result.voiceDuration = voiceData.voiceDuration;
+      result.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    return result;
   } catch (error: any) {
     console.error('[inboxService] Error sending Legal Affairs message:', error);
     throw error;
@@ -881,6 +938,9 @@ export function subscribeToLegalConversation(
           isDeleted: data.isDeleted || false,
           isRead: data.isRead || false,
           type: data.type || 'text',
+          voiceData: data.voiceData || undefined,
+          voiceDuration: data.voiceDuration || undefined,
+          voiceProfileId: data.voiceProfileId || undefined,
         } as DirectMessage;
       })
       .filter(msg => {
@@ -1010,7 +1070,8 @@ export async function sendGBVMessage(
   senderAvatar: string,
   receiverId: string,
   receiverName: string,
-  content: string
+  content: string,
+  voiceData?: { voiceData: string; voiceDuration: number; voiceProfileId: string; type: 'voice' }
 ): Promise<DirectMessage | null> {
   console.log('[inboxService] Sending GBV message...');
 
@@ -1022,7 +1083,9 @@ export async function sendGBVMessage(
     const conversationId = [senderId, receiverId].sort().join('_');
     const participants = [senderId, receiverId];
 
-    const messageData = {
+    const messageType = voiceData?.type || 'text';
+
+    const messageData: Record<string, any> = {
       senderId,
       senderName: senderName || 'Anonymous',
       senderAvatar: senderAvatar || '',
@@ -1034,13 +1097,19 @@ export async function sendGBVMessage(
       timestamp: serverTimestamp(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      messageData.voiceData = voiceData.voiceData;
+      messageData.voiceDuration = voiceData.voiceDuration;
+      messageData.voiceProfileId = voiceData.voiceProfileId;
+    }
 
     const docRef = await addDoc(collection(db, GBV_COLLECTION), messageData);
     console.log('[inboxService] GBV message sent successfully:', docRef.id);
 
-    return {
+    const result: DirectMessage = {
       id: docRef.id,
       senderId,
       senderName: messageData.senderName,
@@ -1051,8 +1120,16 @@ export async function sendGBVMessage(
       timestamp: new Date().toISOString(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      result.voiceData = voiceData.voiceData;
+      result.voiceDuration = voiceData.voiceDuration;
+      result.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    return result;
   } catch (error: any) {
     console.error('[inboxService] Error sending GBV message:', error);
     throw error;
@@ -1092,6 +1169,9 @@ export function subscribeToGBVConversation(
           isDeleted: data.isDeleted || false,
           isRead: data.isRead || false,
           type: data.type || 'text',
+          voiceData: data.voiceData || undefined,
+          voiceDuration: data.voiceDuration || undefined,
+          voiceProfileId: data.voiceProfileId || undefined,
         } as DirectMessage;
       })
       .filter(msg => {
@@ -1217,7 +1297,8 @@ export async function sendAbortionMessage(
   senderAvatar: string,
   receiverId: string,
   receiverName: string,
-  content: string
+  content: string,
+  voiceData?: { voiceData: string; voiceDuration: number; voiceProfileId: string; type: 'voice' }
 ): Promise<DirectMessage | null> {
   console.log('[inboxService] Sending Abortion message...');
 
@@ -1229,7 +1310,9 @@ export async function sendAbortionMessage(
     const conversationId = [senderId, receiverId].sort().join('_');
     const participants = [senderId, receiverId];
 
-    const messageData = {
+    const messageType = voiceData?.type || 'text';
+
+    const messageData: Record<string, any> = {
       senderId,
       senderName: senderName || 'Anonymous',
       senderAvatar: senderAvatar || '',
@@ -1241,13 +1324,19 @@ export async function sendAbortionMessage(
       timestamp: serverTimestamp(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      messageData.voiceData = voiceData.voiceData;
+      messageData.voiceDuration = voiceData.voiceDuration;
+      messageData.voiceProfileId = voiceData.voiceProfileId;
+    }
 
     const docRef = await addDoc(collection(db, ABORTION_COLLECTION), messageData);
     console.log('[inboxService] Abortion message sent successfully:', docRef.id);
 
-    return {
+    const result: DirectMessage = {
       id: docRef.id,
       senderId,
       senderName: messageData.senderName,
@@ -1258,8 +1347,16 @@ export async function sendAbortionMessage(
       timestamp: new Date().toISOString(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      result.voiceData = voiceData.voiceData;
+      result.voiceDuration = voiceData.voiceDuration;
+      result.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    return result;
   } catch (error: any) {
     console.error('[inboxService] Error sending Abortion message:', error);
     throw error;
@@ -1296,6 +1393,9 @@ export function subscribeToAbortionConversation(
           isDeleted: data.isDeleted || false,
           isRead: data.isRead || false,
           type: data.type || 'text',
+          voiceData: data.voiceData || undefined,
+          voiceDuration: data.voiceDuration || undefined,
+          voiceProfileId: data.voiceProfileId || undefined,
         } as DirectMessage;
       })
       .filter(msg => {
@@ -1418,7 +1518,8 @@ export async function sendFamilyPlanningMessage(
   senderAvatar: string,
   receiverId: string,
   receiverName: string,
-  content: string
+  content: string,
+  voiceData?: { voiceData: string; voiceDuration: number; voiceProfileId: string; type: 'voice' }
 ): Promise<DirectMessage | null> {
   console.log('[inboxService] Sending Family Planning message...');
 
@@ -1430,7 +1531,9 @@ export async function sendFamilyPlanningMessage(
     const conversationId = [senderId, receiverId].sort().join('_');
     const participants = [senderId, receiverId];
 
-    const messageData = {
+    const messageType = voiceData?.type || 'text';
+
+    const messageData: Record<string, any> = {
       senderId,
       senderName: senderName || 'Anonymous',
       senderAvatar: senderAvatar || '',
@@ -1442,13 +1545,19 @@ export async function sendFamilyPlanningMessage(
       timestamp: serverTimestamp(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      messageData.voiceData = voiceData.voiceData;
+      messageData.voiceDuration = voiceData.voiceDuration;
+      messageData.voiceProfileId = voiceData.voiceProfileId;
+    }
 
     const docRef = await addDoc(collection(db, FAMILY_PLANNING_COLLECTION), messageData);
     console.log('[inboxService] Family Planning message sent successfully:', docRef.id);
 
-    return {
+    const result: DirectMessage = {
       id: docRef.id,
       senderId,
       senderName: messageData.senderName,
@@ -1459,8 +1568,16 @@ export async function sendFamilyPlanningMessage(
       timestamp: new Date().toISOString(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      result.voiceData = voiceData.voiceData;
+      result.voiceDuration = voiceData.voiceDuration;
+      result.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    return result;
   } catch (error: any) {
     console.error('[inboxService] Error sending Family Planning message:', error);
     throw error;
@@ -1497,6 +1614,9 @@ export function subscribeToFamilyPlanningConversation(
           isDeleted: data.isDeleted || false,
           isRead: data.isRead || false,
           type: data.type || 'text',
+          voiceData: data.voiceData || undefined,
+          voiceDuration: data.voiceDuration || undefined,
+          voiceProfileId: data.voiceProfileId || undefined,
         } as DirectMessage;
       })
       .filter(msg => {

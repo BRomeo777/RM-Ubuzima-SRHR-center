@@ -128,6 +128,8 @@ interface PersistentState {
   // User management
   users: User[];
   savedUser: User | null;
+  selectedVoiceId: string;
+  setSelectedVoiceId: (id: string) => void;
   
   // Authentication
   loginUser: (email: string, password: string) => User | null;
@@ -711,6 +713,7 @@ export const usePersistentStore = create<PersistentState>()(
       facilities: [],
       appointments: [],
       savedUser: null,
+      selectedVoiceId: 'voice-neutral',
       users: [],
       language: 'en',
       enabledAIs: ['ubuzima-admin'] as AIType[],
@@ -1178,6 +1181,7 @@ export const usePersistentStore = create<PersistentState>()(
       },
 
       setSavedUser: (user) => set({ savedUser: user }),
+      setSelectedVoiceId: (id) => set({ selectedVoiceId: id }),
       setLanguage: (lang) => set({ language: lang }),
 
       // Authentication

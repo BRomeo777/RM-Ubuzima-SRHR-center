@@ -92,6 +92,41 @@ service cloud.firestore {
       allow write: if isAdmin();  // Only admin can add/modify facilitators
     }
     
+    // Voice calls - signaling only. No audio ever passes through Firestore.
+    // Readable and writable only by the two participants of that call.
+    match /calls/{callId} {
+      function isParticipant() {
+        return isAuthenticated() && (
+          request.auth.uid == resource.data.callerId ||
+          request.auth.uid == resource.data.calleeId
+        );
+      }
+
+      allow read: if isParticipant();
+
+      // The caller creates the invitation and must be themselves.
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.callerId;
+
+      // Either party may answer, decline, or hang up.
+      allow update: if isParticipant();
+
+      allow delete: if isAdmin();
+
+      // ICE candidates: both participants exchange network routes here.
+      match /{role}Candidates/{candidateId} {
+        function isCallParticipant() {
+          return isAuthenticated() && (
+            request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.callerId ||
+            request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.calleeId
+          );
+        }
+
+        allow read, create: if isCallParticipant();
+        allow update, delete: if false;
+      }
+    }
+
     // Legacy collections support - allow admin access
     match /chat_participants/{docId} {
       allow read: if true;

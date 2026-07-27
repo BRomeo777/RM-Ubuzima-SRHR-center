@@ -23,6 +23,8 @@ import {
   ShieldAlert,
   HeartCrack,
   Baby,
+  Mic,
+  X,
 } from 'lucide-react';
 import { cn } from '../utils/helpers';
 import { usePhoneBackNavigation } from '../hooks/usePhoneBackNavigation';
@@ -39,6 +41,11 @@ import {
   markMessagesAsRead,
   deleteDirectMessage,
 } from '../services/facilitatorInboxService';
+import VoiceRecorder from '../components/VoiceRecorder';
+import VoicePlayer from '../components/VoicePlayer';
+import VoiceSelector from '../components/VoiceSelector';
+import CallButton from '../components/CallButton';
+import { useVoiceNote } from '../hooks/useVoiceNote';
 
 // Types for view state
 type ViewState = 'menu' | 'inbox-list' | 'shangazi-list' | 'legal-list' | 'gbv-list' | 'abortion-list' | 'family-planning-list' | 'chat';
@@ -53,6 +60,7 @@ export default function FacilitatorInboxPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { voiceProfile, selectedVoiceId, setSelectedVoiceId, isFacilitator: isFacilitatorVoice, showVoiceSelector, setShowVoiceSelector, handleVoiceSend } = useVoiceNote();
   const { session, setCurrentPage } = useEphemeralStore();
   const { chatSettings, isUserBigSister, isUserLegalAdvisor, isUserGBVCounselor, isUserAbortionAdvisor, isUserFamilyPlanningCounselor } = usePersistentStore();
 
@@ -798,6 +806,12 @@ export default function FacilitatorInboxPage() {
                 {t('chat.privateConversation')}
               </p>
             </div>
+            <CallButton
+              targetUserId={selectedUser.participantId}
+              targetUserName={selectedUser.participantName}
+              targetUserAvatar={selectedUser.participantAvatar || ''}
+              color={isShangazi ? '#ec4899' : isLegal ? '#6366f1' : isGBV ? '#d97706' : isAbortion ? '#e11d48' : isFamilyPlanning ? '#059669' : '#3b82f6'}
+            />
           </div>
         </div>
 
@@ -852,7 +866,16 @@ export default function FacilitatorInboxPage() {
                           ? bubbleOwn
                           : 'bg-white text-gray-800 rounded-bl-sm shadow-sm border border-gray-100'
                       )}>
-                        {msg.content}
+                        {msg.type === 'voice' && msg.voiceData ? (
+                          <VoicePlayer
+                            base64={msg.voiceData}
+                            duration={msg.voiceDuration}
+                            isOwn={isOwnMessage}
+                            themeColor={isShangazi ? '#ec4899' : isLegal ? '#6366f1' : isGBV ? '#d97706' : isAbortion ? '#e11d48' : isFamilyPlanning ? '#059669' : '#3b82f6'}
+                          />
+                        ) : (
+                          <span>{msg.content}</span>
+                        )}
                         {/* Delete button for own messages */}
                         {isOwnMessage && (
                           <button
@@ -896,6 +919,33 @@ export default function FacilitatorInboxPage() {
             >
               <span className="text-lg sm:text-xl">😊</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setShowVoiceSelector(true)}
+              className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+              title="Select voice"
+            >
+              <Mic className="w-4 h-4" style={{ color: voiceProfile.color }} />
+            </button>
+            <VoiceRecorder
+              voiceProfile={voiceProfile}
+              onSend={(base64, duration) => {
+                handleVoiceSend(base64, duration, async (params) => {
+                  if (!currentUser || !selectedUser) return null;
+                  return sendDirectMessage(
+                    currentUser.id,
+                    currentUser.name,
+                    currentUser.avatar || '',
+                    selectedUser.participantId,
+                    selectedUser.participantName,
+                    params.content,
+                    activeTab,
+                    { voiceData: params.voiceData, voiceDuration: params.voiceDuration, voiceProfileId: params.voiceProfileId, type: 'voice' }
+                  );
+                });
+              }}
+              themeColor={isShangazi ? '#ec4899' : isLegal ? '#6366f1' : isGBV ? '#d97706' : isAbortion ? '#e11d48' : isFamilyPlanning ? '#059669' : '#3b82f6'}
+            />
             <textarea
               ref={inputRef}
               value={newMessage}
@@ -976,6 +1026,25 @@ export default function FacilitatorInboxPage() {
             {t('chat.privateNotice')}
           </p>
         </div>
+
+        {/* Voice Selector Modal */}
+        {showVoiceSelector && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShowVoiceSelector(false)}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Choose Voice</h3>
+                <button onClick={() => setShowVoiceSelector(false)} className="p-1 rounded-full hover:bg-gray-100">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <VoiceSelector
+                selectedVoiceId={selectedVoiceId}
+                onSelect={(id) => { setSelectedVoiceId(id); setShowVoiceSelector(false); }}
+                isFacilitator={isFacilitatorVoice}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   };

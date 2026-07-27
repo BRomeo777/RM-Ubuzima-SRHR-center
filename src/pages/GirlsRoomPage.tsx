@@ -25,7 +25,8 @@ import {
   History,
   Home,
   MessageSquare,
-  ExternalLink
+  ExternalLink,
+  Mic,
 } from 'lucide-react';
 import { cn } from '../utils/helpers';
 import GirlIcon from '../components/GirlIcon';
@@ -33,6 +34,10 @@ import { useEphemeralStore, usePersistentStore } from '../store';
 import type { Facilitator, DirectMessage, InboxConversation } from '../types';
 import { subscribeToShangaziConversation, sendShangaziMessage, subscribeToUserShangaziInbox } from '../services/inboxService';
 import { usePhoneBackNavigation } from '../hooks/usePhoneBackNavigation';
+import VoiceRecorder from '../components/VoiceRecorder';
+import VoicePlayer from '../components/VoicePlayer';
+import VoiceSelector from '../components/VoiceSelector';
+import { useVoiceNote } from '../hooks/useVoiceNote';
 
 // --- Types ---
 interface SisterMessage {
@@ -721,6 +726,7 @@ export default function GirlsRoomPage() {
   });
 
   const isKinyarwanda = i18n.language === 'rw';
+  const { voiceProfile, selectedVoiceId, setSelectedVoiceId, isFacilitator: isFacilitatorVoice, showVoiceSelector, setShowVoiceSelector, handleVoiceSend } = useVoiceNote();
 
   // Safe Exit Handler
   const handleSafeExit = () => {
@@ -1559,12 +1565,16 @@ export default function GirlsRoomPage() {
                       : 'bg-gray-100 text-gray-800 rounded-bl-none'
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
-                  <p className={`text-xs mt-1 ${
-                    message.senderId === session?.user?.id ? 'text-white/70' : 'text-gray-500'
-                  }`}>
-                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  {message.type === 'voice' && message.voiceData ? (
+                    <VoicePlayer
+                      base64={message.voiceData}
+                      duration={message.voiceDuration}
+                      isOwn={message.senderId === session?.user?.id}
+                      themeColor="#ec4899"
+                    />
+                  ) : (
+                    <p className="text-sm">{message.content}</p>
+                  )}
                 </div>
               </div>
             ))
@@ -1582,6 +1592,32 @@ export default function GirlsRoomPage() {
         {/* Input - Form wrapped for better UX and reliable delivery - MOBILE OPTIMIZED */}
         <div className="p-2 sm:p-4 border-t border-pink-100 bg-white">
           <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex gap-2 items-end">
+            <button
+              type="button"
+              onClick={() => setShowVoiceSelector(true)}
+              className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+              title={isKinyarwanda ? 'Hitamo ijwi' : 'Select voice'}
+            >
+              <Mic className="w-4 h-4" style={{ color: voiceProfile.color }} />
+            </button>
+            <VoiceRecorder
+              voiceProfile={voiceProfile}
+              onSend={(base64, duration) => {
+                handleVoiceSend(base64, duration, async (params) => {
+                  if (!session?.user || !selectedSister) return null;
+                  return sendShangaziMessage(
+                    session.user.id,
+                    session.user.name,
+                    session.user.avatar,
+                    selectedSister.userId,
+                    selectedSister.userName,
+                    params.content,
+                    { voiceData: params.voiceData, voiceDuration: params.voiceDuration, voiceProfileId: params.voiceProfileId, type: 'voice' }
+                  );
+                });
+              }}
+              themeColor="#ec4899"
+            />
             <input
               type="text"
               value={messageInput}
@@ -1631,6 +1667,25 @@ export default function GirlsRoomPage() {
           )}
 
         </div>
+
+        {/* Voice Selector Modal */}
+        {showVoiceSelector && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShowVoiceSelector(false)}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">{isKinyarwanda ? 'Hitamo Ijwi' : 'Choose Voice'}</h3>
+                <button onClick={() => setShowVoiceSelector(false)} className="p-1 rounded-full hover:bg-gray-100">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <VoiceSelector
+                selectedVoiceId={selectedVoiceId}
+                onSelect={(id) => { setSelectedVoiceId(id); setShowVoiceSelector(false); }}
+                isFacilitator={isFacilitatorVoice}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   };

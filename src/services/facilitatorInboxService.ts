@@ -726,6 +726,9 @@ export function subscribeToConversation(
           isDeleted: data.isDeleted || false,
           isRead: data.isRead || false,
           type: data.type || 'text',
+          voiceData: data.voiceData || undefined,
+          voiceDuration: data.voiceDuration || undefined,
+          voiceProfileId: data.voiceProfileId || undefined,
         } as DirectMessage;
       })
       .filter(msg => {
@@ -769,36 +772,45 @@ export async function sendDirectMessage(
   receiverId: string,
   receiverName: string,
   content: string,
-  context: InboxContext = 'inbox'
+  context: InboxContext = 'inbox',
+  voiceData?: { voiceData: string; voiceDuration: number; voiceProfileId: string; type: 'voice' }
 ): Promise<DirectMessage | null> {
   console.log(`[facilitatorInboxService] Sending ${context} message from ${senderName} to ${receiverName}`);
 
   const collectionName = collectionForContext(context);
 
   try {
-    // Create conversation ID for easier querying (sorted user IDs)
     const conversationId = [senderId, receiverId].sort().join('_');
-    // Participants array for array-contains queries
     const participants = [senderId, receiverId];
 
-    const docRef = await addDoc(collection(db, collectionName), {
+    const messageType = voiceData?.type || 'text';
+
+    const docData: Record<string, any> = {
       senderId,
       senderName,
       senderAvatar,
       receiverId,
       receiverName,
       content,
-      conversationId, // For simple conversation queries
-      participants,   // For array-contains queries
+      conversationId,
+      participants,
       timestamp: serverTimestamp(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
-    });
+      type: messageType,
+    };
+
+    if (voiceData) {
+      docData.voiceData = voiceData.voiceData;
+      docData.voiceDuration = voiceData.voiceDuration;
+      docData.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    const docRef = await addDoc(collection(db, collectionName), docData);
 
     console.log('[facilitatorInboxService] Message sent successfully:', docRef.id);
 
-    return {
+    const result: DirectMessage = {
       id: docRef.id,
       senderId,
       senderName,
@@ -809,8 +821,16 @@ export async function sendDirectMessage(
       timestamp: new Date().toISOString(),
       isDeleted: false,
       isRead: false,
-      type: 'text',
+      type: messageType,
     };
+
+    if (voiceData) {
+      result.voiceData = voiceData.voiceData;
+      result.voiceDuration = voiceData.voiceDuration;
+      result.voiceProfileId = voiceData.voiceProfileId;
+    }
+
+    return result;
   } catch (error: any) {
     console.error('[facilitatorInboxService] Error sending message:', error);
     return null;

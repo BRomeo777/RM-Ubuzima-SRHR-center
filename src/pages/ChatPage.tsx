@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useEphemeralStore, usePersistentStore } from '../store';
@@ -22,7 +22,8 @@ import {
   Heart,
   Settings,
   Smile,
-  ArrowLeft
+  ArrowLeft,
+  Mic,
 } from 'lucide-react';
 import ChatSettings from '../components/ChatSettings';
 import NotificationBell from '../components/NotificationBell';
@@ -31,15 +32,20 @@ import { cn } from '../utils/helpers';
 import { subscribeToGlobalMessagesWithAI, sendMessageToGlobalChat, deleteGlobalMessage } from '../services/chatService';
 import type { ChatMessage, AIType, Facilitator } from '../types';
 import { usePhoneBackNavigation } from '../hooks/usePhoneBackNavigation';
+import VoiceRecorder from '../components/VoiceRecorder';
+import VoicePlayer from '../components/VoicePlayer';
+import VoiceSelector from '../components/VoiceSelector';
+import { useVoiceNote } from '../hooks/useVoiceNote';
 
 // Emoji list for picker
-const EMOJIS = ['😀','😃','😄','😁','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🥸','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕','🤑','🤠','😈','👿','👹','👺','🤡','💩','👻','💀','☠️','👽','👾','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❇️','✳️','❎','🌐','💠','Ⓜ️','🌀','🏧','🈂️','🛂','🛃','🛄','🛅','♿','🚭','🚾','🅿️','🈳','🈂','⚕️','🛗','🛌','🔀','🔁','🔂','▶️','⏩','⏭️','⏯️','◀️','⏪','⏮️','🔼','⏫','🔽','⏬','⏸️','⏹️','⏺️','⏏️','🎦','🔅','🔆','📶','🛜','📳','📴','♀️','♂️','⚧️','✖️','➕','➖','➗','🟰','♾️','‼️','⁉️','❓','❔','❕','❗','〰️','💱','💲','⚕️','♻️','🔱','📛','🔰','⭕','✅','☑️','✔️','❌','❎','➰','➿','〽️','✳️','✴️','❇️','©️','®️','™️','#️⃣','*️⃣','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔠','🔡','🔢','🔣','🔤','🅰️','🆎','🅱️','🆑','🆒','🆓','ℹ️','🆔','Ⓜ️','🆕','🆖','🆗','🅾️','🆘','🆙','🆚','🈁','🈂️','🈷️','🈶','🈯','🉐','🈹','🈚','🈲','🉑','🈸','🈴','🈳','㊗️','㊙️','🈺','🈵','🔴','🟠','🟡','🟢','🔵','🟣','🟤','⚫','⚪','🟥','🟧','🟨','🟩','🟦','🟪','🟫','⬛','⬜','◼️','◻️','◾','◽','▪️','▫️','🔶','🔷','🔸','🔹','🔺','🔻','💠','🔘','🔳','🔲','🕛','🕧','🕐','🕑','🕝','🕒','🕓','🕟','🕔','🕕','🕠','🕖','🕗','🕡','🕘','🕙','🕥','🕚','🕦','🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘','🌙','🌚','🌛','🌜','🌡️','☀️','🌝','🌞','🪐','⭐','🌟','🌠','🌌','☁️','⛅','⛈️','🌤️','🌥️','🌦️','🌧️','🌨️','❄️','🌬️','💨','🌪️','🌫️','🌊','💧','💦','☔','☂️','🌂','⚡','❄️','☃️','⛄','☄️','🔥','💥','🌈','☀️','🌤️','⛅','☁️','🌦️','🌧️','⛈️','🌩️','⚡','❄️','🌨️','☃️','⛄','💧','💦','☔','☂️','🌊','🌫️'];
+const EMOJIS = ['??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','?','?','?','?','?','?','?','?','?','?','?','?','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','??','???','???','??','??','???','??','?','?','??','?','??','??','??','??','??','??','??','??','??','??','??','??','?','?','?','?','??','??','??','??','??','??','??','??','??','??','??','?','??','??','??','??','?','??','??','??','??','??','???','??','??','??','??','?','??','??','???','??','??','??','??','??','??','??','??','??','?','??','??','??','?','??','??','?','??','?','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','?','?','??','??','??','??','?','?','?','?','??','??','??','??','??','??','??','??','?','?','??','??','?','?','?','?','??','??','??','??','�?','�?','�?','#??','*??','0??','1??','2??','3??','4??','5??','6??','7??','8??','9??','??','??','??','??','??','??','???','??','???','??','??','??','??','??','??','??','??','??','???','??','??','??','??','???','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','?','??','??','??','??','??','??','??','?','?','??','??','?','?','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','?','??','??','??','??','?','??','???','???','???','???','???','??','???','??','???','???','??','??','??','?','??','??','?','??','??','?','??','??','??','??','??','???','?','??','???','???','??','???','?','??','???','??','?','??','??','?','??','??','???'];
 
 export default function ChatPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { session, setCurrentPage } = useEphemeralStore();
   const { chatSettings, isAdminLoggedIn, language } = usePersistentStore();
+  const { voiceProfile, selectedVoiceId, setSelectedVoiceId, isFacilitator: isFacilitatorVoice, showVoiceSelector, setShowVoiceSelector, handleVoiceSend } = useVoiceNote();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState('');
@@ -108,7 +114,7 @@ export default function ChatPage() {
 
   // Subscribe to global messages
   useEffect(() => {
-    console.log('[ChatPage] 🚀 Setting up global chat subscription');
+    console.log('[ChatPage] ?? Setting up global chat subscription');
     setCurrentPage('chat');
     
     setLoading(true);
@@ -118,14 +124,14 @@ export default function ChatPage() {
     // IMPORTANT: AI (RM Admin) will ONLY respond when explicitly mentioned with @RM Admin
     // This is enforced in chatService.ts - processMessageForAIMention() - STRICT CHECK 4
     const unsubscribe = subscribeToGlobalMessagesWithAI((newMessages: ChatMessage[]) => {
-      console.log(`[ChatPage] 📨 Received ${newMessages.length} messages from global chat`);
+      console.log(`[ChatPage] ?? Received ${newMessages.length} messages from global chat`);
       setMessages(newMessages);
       setLoading(false);
     }, language);
 
     // Cleanup on unmount
     return () => {
-      console.log('[ChatPage] 🧹 Cleaning up chat subscription');
+      console.log('[ChatPage] ?? Cleaning up chat subscription');
       unsubscribe();
     };
   }, [setCurrentPage, language]);
@@ -203,9 +209,9 @@ export default function ChatPage() {
         throw new Error('Failed to send message');
       }
       
-      console.log('[ChatPage] ✅ Message sent successfully:', result.id);
+      console.log('[ChatPage] ? Message sent successfully:', result.id);
     } catch (err: any) {
-      console.error('[ChatPage] ❌ Failed to send message:', err);
+      console.error('[ChatPage] ? Failed to send message:', err);
       setError('Failed to send message. Please try again.');
       // Restore message if failed
       setMessage(content);
@@ -221,12 +227,12 @@ export default function ChatPage() {
     try {
       const success = await deleteGlobalMessage(messageId);
       if (success) {
-        console.log('[ChatPage] ✅ Message deleted:', messageId);
+        console.log('[ChatPage] ? Message deleted:', messageId);
       } else {
-        console.error('[ChatPage] ❌ Failed to delete message');
+        console.error('[ChatPage] ? Failed to delete message');
       }
     } catch (err) {
-      console.error('[ChatPage] ❌ Error deleting message:', err);
+      console.error('[ChatPage] ? Error deleting message:', err);
     }
   };
 
@@ -581,6 +587,38 @@ export default function ChatPage() {
               <Smile className="w-6 h-6" />
             </button>
 
+            {/* Voice Selector Button */}
+            <button
+              type="button"
+              onClick={() => setShowVoiceSelector(true)}
+              className="p-2 text-rm-gray-500 hover:text-rm-gray-700 hover:bg-gray-200 rounded-full transition-colors"
+              disabled={!session?.user}
+              title="Select voice"
+            >
+              <Mic className="w-5 h-5" style={{ color: voiceProfile.color }} />
+            </button>
+
+            {/* Voice Recorder */}
+            <VoiceRecorder
+              voiceProfile={voiceProfile}
+              onSend={(base64, duration) => {
+                handleVoiceSend(base64, duration, async (params) => {
+                  if (!session?.user) return null;
+                  return sendMessageToGlobalChat({
+                    userId: session.user.id,
+                    userName: session.user.name,
+                    userAvatar: session.user.avatar,
+                    content: params.content,
+                    type: 'voice',
+                    voiceData: params.voiceData,
+                    voiceDuration: params.voiceDuration,
+                    voiceProfileId: params.voiceProfileId,
+                  });
+                });
+              }}
+              themeColor="#0d9488"
+            />
+
             {/* Input Field - WhatsApp Style - Smaller on PC */}
             <div className="flex-1 bg-white rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-sm border border-gray-200 sm:max-w-xl">
               <input
@@ -625,6 +663,25 @@ export default function ChatPage() {
         isFacilitator={chatSettings?.facilitators?.some(f => f.userId === session?.user?.id)}
       />
 
+      {/* Voice Selector Modal */}
+      {showVoiceSelector && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShowVoiceSelector(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Choose Voice</h3>
+              <button onClick={() => setShowVoiceSelector(false)} className="p-1 rounded-full hover:bg-gray-100">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <VoiceSelector
+              selectedVoiceId={selectedVoiceId}
+              onSelect={(id) => { setSelectedVoiceId(id); setShowVoiceSelector(false); }}
+              isFacilitator={isFacilitatorVoice}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -666,7 +723,7 @@ const MessageBubble = memo(function MessageBubble({
   const shouldShowMenu = isOwnMessage || (isFacilitator && !message.isAI);
 
   // Quick reaction emojis (WhatsApp style) - memoized
-  const quickReactions = useRef(['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '👏']).current;
+  const quickReactions = useRef(['??', '??', '??', '??', '??', '??', '??', '??']).current;
 
   // Close actions when clicking outside - memoized callback
   useEffect(() => {
@@ -837,6 +894,13 @@ const MessageBubble = memo(function MessageBubble({
           >
             {message.isDeleted ? (
               <p className="italic text-sm opacity-60">{t('chat.deleted')}</p>
+            ) : message.type === 'voice' && message.voiceData ? (
+              <VoicePlayer
+                base64={message.voiceData}
+                duration={message.voiceDuration}
+                isOwn={isOwnMessage}
+                themeColor="#0d9488"
+              />
             ) : (
               <p className={cn(
                 'text-sm whitespace-pre-wrap',

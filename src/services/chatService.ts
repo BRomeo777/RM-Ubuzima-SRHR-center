@@ -89,6 +89,9 @@ export function subscribeToGlobalMessages(
         aiType: data.aiType || null,
         isFacilitator: data.isFacilitator || false,
         facilitatorBadge: data.facilitatorBadge || null,
+        voiceData: data.voiceData || undefined,
+        voiceDuration: data.voiceDuration || undefined,
+        voiceProfileId: data.voiceProfileId || undefined,
       } as ChatMessage;
     });
     
@@ -161,7 +164,7 @@ export async function sendMessageToGlobalChat(
   try {
     const messagesRef = getGlobalMessagesRef();
     
-    const docData = {
+    const docData: Record<string, any> = {
       userId: messageData.userId,
       userName: messageData.userName,
       userAvatar: messageData.userAvatar || '',
@@ -174,6 +177,12 @@ export async function sendMessageToGlobalChat(
       facilitatorBadge: messageData.facilitatorBadge || null,
       timestamp: serverTimestamp()
     };
+
+    if (messageData.type === 'voice' && messageData.voiceData) {
+      docData.voiceData = messageData.voiceData;
+      docData.voiceDuration = messageData.voiceDuration;
+      docData.voiceProfileId = messageData.voiceProfileId;
+    }
     
     console.log('[chatService] Writing document to Firestore...');
     const docRef = await addDoc(messagesRef, docData);
@@ -238,6 +247,9 @@ export async function getGlobalMessages(): Promise<ChatMessage[]> {
         aiType: data.aiType || null,
         isFacilitator: data.isFacilitator || false,
         facilitatorBadge: data.facilitatorBadge || null,
+        voiceData: data.voiceData || undefined,
+        voiceDuration: data.voiceDuration || undefined,
+        voiceProfileId: data.voiceProfileId || undefined,
       } as ChatMessage;
     });
     
@@ -636,6 +648,9 @@ export function subscribeToGlobalMessagesWithAI(
         aiType: data.aiType || null,
         isFacilitator: data.isFacilitator || false,
         facilitatorBadge: data.facilitatorBadge || null,
+        voiceData: data.voiceData || undefined,
+        voiceDuration: data.voiceDuration || undefined,
+        voiceProfileId: data.voiceProfileId || undefined,
       } as ChatMessage;
     });
 

@@ -25,7 +25,8 @@ import {
   Sparkles,
   Crown,
   ArrowLeft as BackIcon,
-  Settings
+  Settings,
+  Mic,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../utils/helpers';
@@ -37,6 +38,11 @@ import {
 } from '../services/inboxService';
 import type { Facilitator, InboxConversation, DirectMessage } from '../types';
 import { usePhoneBackNavigation } from '../hooks/usePhoneBackNavigation';
+import VoiceRecorder from '../components/VoiceRecorder';
+import VoicePlayer from '../components/VoicePlayer';
+import VoiceSelector from '../components/VoiceSelector';
+import CallButton from '../components/CallButton';
+import { useVoiceNote } from '../hooks/useVoiceNote';
 
 // Emoji list for picker
 const EMOJIS = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '🏧', '🈂️', '🛂', '🛃', '🛄', '🛅', '♿', '🚭', '🚾', '🅿️', '🈳', '🈂', '⚕️', '🛗', '🛌', '🔀', '🔁', '🔂', '▶️', '⏩', '⏭️', '⏯️', '◀️', '⏪', '⏮️', '🔼', '⏫', '🔽', '⏬', '⏸️', '⏹️', '⏺️', '⏏️', '🎦', '🔅', '🔆', '📶', '📳', '📴', '♀️', '♂️', '⚧', '✖️', '➕', '➖', '➗', '♾️', '‼️', '⁉️', '❓', '❔', '❕', '❗', '〰️', '💱', '💲', '⚕️', '♻️', '🔱', '📛', '🔰', '⭕', '✅', '☑️', '✔️', '❌', '❎', '➰', '➿', '〽️', '✳️', '✴️', '❇️', '©️', '®️', '™️', '#️⃣', '*️⃣', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔠', '🔡', '🔢', '🔣', '🔤', '🅰️', '🆎', '🅱️', '🆑', '🆒', '🆓', 'ℹ️', '🆔', 'Ⓜ️', '🆕', '🆖', '🅾️', '🆗', '🅿️', '🆘', '🆙', '🆚', '🈁', '🈂️', '🈷️', '🈶', '🈯', '🉐', '🈹', '🈚', '🈲', '🉑', '🈸', '🈴', '🈳', '㊗️', '㊙️', '🈺', '🈵', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫', '⬇️', '⬆️', '⬅️', '➡️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↩️', '↪️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '⚪', '⚫', '🟤', '🟣', '🔴', '🟠', '🟡', '🟢', '🔵', '🟦', '🟪', '🟥', '🟧', '🟨', '🟩', '⬜', '⬛', '◽', '◾', '🔲', '🔳', '🏁', '🚩', '🎌', '🏴', '🏳️', '🏳️\u200d🌈', '🏳️\u200d⚧️', '🏴\u200d☠️', '🇦🇨', '🇦🇩', '🇦🇪', '🇦🇫', '🇦🇬', '🇦🇮', '🇦🇱', '🇦🇲', '🇦🇴', '🇦🇶', '🇦🇷', '🇦🇸', '🇦🇹', '🇦🇺', '🇦🇼', '🇦🇽', '🇦🇿', '🇧🇦', '🇧🇧', '🇧🇩', '🇧🇪', '🇧🇫', '🇧🇬', '🇧🇭', '🇧🇮', '🇧🇯', '🇧🇱', '🇧🇲', '🇧🇳', '🇧🇴', '🇧🇶', '🇧🇷', '🇧🇸', '🇧🇹', '🇧🇻', '🇧🇼', '🇧🇾', '🇧🇿', '🇨🇦', '🇨🇨', '🇨🇩', '🇨🇫', '🇨🇬', '🇨🇭', '🇨🇮', '🇨🇰', '🇨🇱', '🇨🇲', '🇨🇳', '🇨🇴', '🇨🇵', '🇨🇷', '🇨🇺', '🇨🇻', '🇨🇼', '🇨🇽', '🇨🇾', '🇨🇿', '🇩🇪', '🇩🇬', '🇩🇯', '🇩🇰', '🇩🇲', '🇩🇴', '🇩🇿', '🇪🇦', '🇪🇨', '🇪🇪', '🇪🇬', '🇪🇭', '🇪🇷', '🇪🇸', '🇪🇹', '🇪🇺', '🇫🇮', '🇫🇯', '🇫🇰', '🇫🇲', '🇫🇴', '🇫🇷', '🇬🇦', '🇬🇧', '🇬🇩', '🇬🇪', '🇬🇫', '🇬🇬', '🇬🇭', '🇬🇮', '🇬🇱', '🇬🇲', '🇬🇳', '🇬🇵', '🇬🇶', '🇬🇷', '🇬🇸', '🇬🇹', '🇬🇺', '🇬🇼', '🇬🇾', '🇭🇰', '🇭🇲', '🇭🇳', '🇭🇷', '🇭🇹', '🇭🇺', '🇮🇨', '🇮🇩', '🇮🇪', '🇮🇱', '🇮🇲', '🇮🇳', '🇮🇴', '🇮🇶', '🇮🇷', '🇮🇸', '🇮🇹', '🇯🇪', '🇯🇲', '🇯🇴', '🇯🇵', '🇰🇪', '🇰🇬', '🇰🇭', '🇰🇮', '🇰🇲', '🇰🇳', '🇰🇵', '🇰🇷', '🇰🇼', '🇰🇾', '🇰🇿', '🇱🇦', '🇱🇧', '🇱🇨', '🇱🇮', '🇱🇰', '🇱🇷', '🇱🇸', '🇱🇹', '🇱🇺', '🇱🇻', '🇱🇾', '🇲🇦', '🇲🇨', '🇲🇩', '🇲🇪', '🇲🇫', '🇲🇬', '🇲🇭', '🇲🇰', '🇲🇱', '🇲🇲', '🇲🇳', '🇲🇴', '🇲🇵', '🇲🇶', '🇲🇷', '🇲🇸', '🇲🇹', '🇲🇺', '🇲🇻', '🇲🇼', '🇲🇽', '🇲🇾', '🇲🇿', '🇳🇦', '🇳🇨', '🇳🇪', '🇳🇫', '🇳🇬', '🇳🇮', '🇳🇱', '🇳🇴', '🇳🇵', '🇳🇷', '🇳🇺', '🇳🇿', '🇴🇲', '🇵🇦', '🇵🇪', '🇵🇫', '🇵🇬', '🇵🇭', '🇵🇰', '🇵🇱', '🇵🇲', '🇵🇳', '🇵🇷', '🇵🇸', '🇵🇹', '🇵🇼', '🇵🇾', '🇶🇦', '🇷🇪', '🇷🇴', '🇷🇸', '🇷🇺', '🇷🇼', '🇸🇦', '🇸🇧', '🇸🇨', '🇸🇩', '🇸🇪', '🇸🇬', '🇸🇭', '🇸🇮', '🇸🇯', '🇸🇰', '🇸🇱', '🇸🇲', '🇸🇳', '🇸🇴', '🇸🇷', '🇸🇸', '🇸🇹', '🇸🇻', '🇸🇽', '🇸🇾', '🇸🇿', '🇹🇦', '🇹🇨', '🇹🇩', '🇹🇫', '🇹🇬', '🇹🇭', '🇹🇯', '🇹🇰', '🇹🇱', '🇹🇲', '🇹🇳', '🇹🇴', '🇹🇷', '🇹🇹', '🇹🇻', '🇹🇼', '🇹🇿', '🇺🇦', '🇺🇬', '🇺🇲', '🇺🇳', '🇺🇸', '🇺🇾', '🇺🇿', '🇻🇦', '🇻🇨', '🇻🇪', '🇻🇬', '🇻🇮', '🇻🇳', '🇻🇺', '🇼🇫', '🇼🇸', '🇽🇰', '🇾🇪', '🇾🇹', '🇿🇦', '🇿🇲', '🇿🇼'];
@@ -170,7 +176,16 @@ function InboxMessageBubble({
               )}
               onClick={() => isOwnMessage && setShowActions(!showActions)}
             >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              {message.type === 'voice' && message.voiceData ? (
+                <VoicePlayer
+                  base64={message.voiceData}
+                  duration={message.voiceDuration}
+                  isOwn={isOwnMessage}
+                  themeColor="#0d9488"
+                />
+              ) : (
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              )}
             </div>
 
             {/* Actions Menu (3-dot) */}
@@ -223,6 +238,7 @@ export default function InboxPage() {
   const navigate = useNavigate();
   const { session, setCurrentPage, chatFullScreen, setChatFullScreen } = useEphemeralStore();
   const { chatSettings, isAdminLoggedIn } = usePersistentStore();
+  const { voiceProfile, selectedVoiceId, setSelectedVoiceId, isFacilitator: isFacilitatorVoice, showVoiceSelector, setShowVoiceSelector, handleVoiceSend } = useVoiceNote();
   
   const [view, setView] = useState<'list' | 'chat'>('list');
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
@@ -495,6 +511,14 @@ export default function InboxPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Voice call */}
+                <CallButton
+                  targetUserId={selectedFacilitator.userId}
+                  targetUserName={selectedFacilitator.userName}
+                  targetUserAvatar={selectedFacilitator.userAvatar || ''}
+                  targetIsFacilitator
+                  className="text-rm-gray-500 hover:bg-rm-gray-100"
+                />
                 {/* Terms Button */}
                 <button
                   onClick={() => setShowTerms(true)}
@@ -674,6 +698,37 @@ export default function InboxPage() {
                 <Smile className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
 
+              {/* Voice Selector Button */}
+              <button
+                type="button"
+                onClick={() => setShowVoiceSelector(true)}
+                className="p-1.5 sm:p-2 text-rm-gray-500 hover:text-rm-gray-700 hover:bg-gray-200 rounded-full transition-colors flex-shrink-0"
+                disabled={!session?.user}
+                title="Select voice"
+              >
+                <Mic className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: voiceProfile.color }} />
+              </button>
+
+              {/* Voice Recorder */}
+              <VoiceRecorder
+                voiceProfile={voiceProfile}
+                onSend={(base64, duration) => {
+                  handleVoiceSend(base64, duration, async (params) => {
+                    if (!session?.user || !selectedFacilitator) return null;
+                    return sendDirectMessage(
+                      session.user.id,
+                      session.user.name,
+                      session.user.avatar,
+                      selectedFacilitator.userId,
+                      selectedFacilitator.userName,
+                      params.content,
+                      { voiceData: params.voiceData, voiceDuration: params.voiceDuration, voiceProfileId: params.voiceProfileId, type: 'voice' }
+                    );
+                  });
+                }}
+                themeColor="#0d9488"
+              />
+
               {/* Input Field - WhatsApp Style */}
               <div className="flex-1 min-w-0 bg-white rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-sm border border-gray-200">
                 <input
@@ -730,6 +785,24 @@ export default function InboxPage() {
           </div>
         </div>
 
+      {/* Voice Selector Modal */}
+      {showVoiceSelector && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShowVoiceSelector(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Choose Voice</h3>
+              <button onClick={() => setShowVoiceSelector(false)} className="p-1 rounded-full hover:bg-gray-100">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <VoiceSelector
+              selectedVoiceId={selectedVoiceId}
+              onSelect={(id) => { setSelectedVoiceId(id); setShowVoiceSelector(false); }}
+              isFacilitator={isFacilitatorVoice}
+            />
+          </div>
+        </div>
+      )}
       </div>
     );
   }
@@ -848,6 +921,24 @@ export default function InboxPage() {
         </div>
       </div>
 
+      {/* Voice Selector Modal */}
+      {showVoiceSelector && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShowVoiceSelector(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Choose Voice</h3>
+              <button onClick={() => setShowVoiceSelector(false)} className="p-1 rounded-full hover:bg-gray-100">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <VoiceSelector
+              selectedVoiceId={selectedVoiceId}
+              onSelect={(id) => { setSelectedVoiceId(id); setShowVoiceSelector(false); }}
+              isFacilitator={isFacilitatorVoice}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

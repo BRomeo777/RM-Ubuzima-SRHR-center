@@ -6,6 +6,58 @@ export type NotificationPriority = 'low' | 'medium' | 'high';
 export type NotificationSource = 'admin' | 'rm_admin_ai' | 'system';
 export type NotificationCategory = 'notification' | 'announcement';
 
+// ============================================
+// VOICE CALLS
+// ============================================
+
+export type CallStatus =
+  | 'ringing'
+  | 'accepted'
+  | 'declined'
+  | 'ended'
+  | 'missed'
+  | 'failed'
+  | 'busy';
+
+export interface CallSignal {
+  id: string;
+  callerId: string;
+  callerName: string;
+  callerAvatar: string;
+  callerIsFacilitator: boolean;
+  calleeId: string;
+  calleeName: string;
+  calleeAvatar: string;
+  calleeIsFacilitator: boolean;
+  status: CallStatus;
+  /**
+   * Chosen by the facilitator. When false, both parties' voices are
+   * pitch-shifted so real voices are never transmitted.
+   */
+  useRealVoice: boolean;
+  /** Voice profile applied when useRealVoice is false. */
+  voiceProfileId?: string;
+  offer?: { type: string; sdp: string };
+  answer?: { type: string; sdp: string };
+  createdAt: string;
+  answeredAt?: string;
+  endedAt?: string;
+  /** Seconds, written when the call ends. */
+  duration?: number;
+  /** Who hung up, for accurate call logs. */
+  endedBy?: string;
+}
+
+export type CallPhase =
+  | 'idle'
+  | 'dialing'
+  | 'ringing'
+  | 'connecting'
+  | 'connected'
+  | 'ended';
+
+export type CallQuality = 'good' | 'fair' | 'poor';
+
 export interface User {
   id: string;
   name: string;
@@ -59,7 +111,10 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   isDeleted: boolean;
-  type?: 'text' | 'image' | 'system';
+  type?: 'text' | 'image' | 'system' | 'voice';
+  voiceData?: string;
+  voiceDuration?: number;
+  voiceProfileId?: string;
   isAI?: boolean;
   aiType?: AIType;
   isFacilitator?: boolean;
@@ -168,7 +223,10 @@ export interface DirectMessage {
   timestamp: string;
   isDeleted: boolean;
   isRead: boolean;
-  type?: 'text' | 'image' | 'system';
+  type?: 'text' | 'image' | 'system' | 'voice';
+  voiceData?: string;
+  voiceDuration?: number;
+  voiceProfileId?: string;
 }
 
 export interface InboxConversation {
@@ -516,7 +574,10 @@ export interface GroupMessage {
   content: string;
   timestamp: string;
   isDeleted: boolean;
-  type: 'text' | 'image' | 'system';
+  type: 'text' | 'image' | 'system' | 'voice';
+  voiceData?: string;
+  voiceDuration?: number;
+  voiceProfileId?: string;
   isFacilitator?: boolean;
   facilitatorBadge?: string;
   reactions?: string[];
