@@ -20,6 +20,15 @@ const PROCESSOR_NAME = 'pitch-shift-processor';
 export interface CallAudioPipeline {
   /** Track to send over the peer connection. */
   outboundTrack: MediaStreamTrack;
+  /**
+   * Stream containing the outbound track.
+   *
+   * Always pass this to `addTrack(track, stream)`. Adding a track without a
+   * stream makes the remote `ontrack` event fire with an empty `streams`
+   * array, which means the receiving side has nothing to attach and hears
+   * silence.
+   */
+  outboundStream: MediaStream;
   /** Switch between real and disguised voice at any time. */
   setPitchRatio(ratio: number): void;
   /** Mute/unmute the microphone. */
@@ -64,6 +73,7 @@ export async function createCallAudio(pitchRatio: number): Promise<CallAudioPipe
   if (pitchRatio === 1) {
     return {
       outboundTrack: micTrack,
+      outboundStream: micStream,
       setPitchRatio: () => {
         // Cannot disguise without a worklet in the chain; caller should have
         // built the pipeline with a shift if it wants to toggle later.
@@ -79,6 +89,17 @@ export async function createCallAudio(pitchRatio: number): Promise<CallAudioPipe
   }
 
   const audioContext = new AudioContext({ sampleRate: 48000 });
+
+  // Browsers start contexts suspended until a user gesture. A suspended
+  // context runs no processing at all, so the worklet would emit silence and
+  // the call would connect with nobody able to hear anything.
+  if (audioContext.state === 'suspended') {
+    try {
+      await audioContext.resume();
+    } catch (error) {
+      console.warn('[callAudio] Could not resume audio context:', error);
+    }
+  }
 
   let worklet: AudioWorkletNode;
   try {
@@ -121,6 +142,7 @@ export async function createCallAudio(pitchRatio: number): Promise<CallAudioPipe
 
   return {
     outboundTrack,
+    outboundStream: destination.stream,
     setPitchRatio: (ratio: number) => {
       if (pitchParam) {
         pitchParam.value = Math.max(0.5, Math.min(2.0, ratio));

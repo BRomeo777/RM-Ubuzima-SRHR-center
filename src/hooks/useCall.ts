@@ -76,6 +76,19 @@ function buildPeerConfig(): RTCConfiguration {
   };
 }
 
+/**
+ * Get a playable stream out of an ontrack event.
+ *
+ * `event.streams` is only populated when the sender passed a stream to
+ * addTrack. We always do now, but falling back to wrapping the bare track
+ * keeps audio working against any peer that does not, instead of failing
+ * silently with no sound at all.
+ */
+function remoteStreamFromEvent(event: RTCTrackEvent): MediaStream {
+  const [stream] = event.streams;
+  return stream ?? new MediaStream([event.track]);
+}
+
 export interface UseCallResult {
   phase: CallPhase;
   call: CallSignal | null;
@@ -176,6 +189,9 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
     if (remoteAudioRef.current) {
       remoteAudioRef.current.pause();
       remoteAudioRef.current.srcObject = null;
+      // It lives in the document now, so it has to be taken back out or every
+      // call would leave a dead element behind.
+      remoteAudioRef.current.remove();
       remoteAudioRef.current = null;
     }
     if (pcRef.current) {
@@ -244,15 +260,37 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
 
   /** Attach the remote audio to a hidden element so it actually plays. */
   const attachRemoteStream = useCallback((stream: MediaStream) => {
-    const audio = new Audio();
+    // Reuse the element if ontrack fires more than once for the same call.
+    let audio = remoteAudioRef.current;
+
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.autoplay = true;
+      // iOS refuses to play media that is not in the document, and treats
+      // audio without playsInline as fullscreen video.
+      audio.setAttribute('playsinline', 'true');
+      audio.style.display = 'none';
+      document.body.appendChild(audio);
+      remoteAudioRef.current = audio;
+    }
+
     audio.srcObject = stream;
-    audio.autoplay = true;
     // Never mute or lower this; it is the other person's voice.
     audio.volume = 1.0;
+    audio.muted = false;
+
     void audio.play().catch((err) => {
-      console.error('[useCall] Remote audio playback blocked:', err);
+      // Autoplay was blocked. Retry on the next tap anywhere, since by then
+      // the browser has a user gesture to work with.
+      console.error('[useCall] Remote audio playback blocked, retrying on tap:', err);
+      const retry = () => {
+        void remoteAudioRef.current?.play().catch(() => undefined);
+        document.removeEventListener('click', retry);
+        document.removeEventListener('touchstart', retry);
+      };
+      document.addEventListener('click', retry, { once: true });
+      document.addEventListener('touchstart', retry, { once: true });
     });
-    remoteAudioRef.current = audio;
   }, []);
 
   /**
@@ -314,8 +352,7 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
       };
 
       pc.ontrack = (event) => {
-        const [stream] = event.streams;
-        if (stream) attachRemoteStream(stream);
+        attachRemoteStream(remoteStreamFromEvent(event));
       };
 
       watchConnection(pc, () => {
@@ -384,11 +421,10 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
         const pc = new RTCPeerConnection(buildPeerConfig());
         pcRef.current = pc;
         outboundIceRef.current = [];
-        pc.addTrack(audio.outboundTrack);
+        pc.addTrack(audio.outboundTrack, audio.outboundStream);
 
         pc.ontrack = (event) => {
-          const [stream] = event.streams;
-          if (stream) attachRemoteStream(stream);
+          attachRemoteStream(remoteStreamFromEvent(event));
         };
 
         // Watch from the start so a fast connect cannot be missed.
@@ -535,7 +571,7 @@ export function useCall(currentUserId: string | undefined): UseCallResult {
         setIsMuted(false);
 
         const pc = createPeerConnection(incoming.id, 'callee');
-        pc.addTrack(audio.outboundTrack);
+        pc.addTrack(audio.outboundTrack, audio.outboundStream);
 
         await pc.setRemoteDescription(
           new RTCSessionDescription({
