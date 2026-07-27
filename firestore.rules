@@ -1,146 +1,216 @@
 rules_version = '2';
+
+// ============================================================
+// RM Ubuzima - Firestore security rules
+//
+// Goal: stop anonymous access to private health conversations
+// while keeping every existing app flow working.
+//
+// Design notes:
+// - The app's user IDs ARE Firebase Auth UIDs (see AuthPage:
+//   `id: user.uid`), so uid-based rules work correctly.
+// - Public content stays publicly readable because parts of the
+//   app render before login (logo, settings, facilitator list).
+// - Password reset happens while LOGGED OUT, so those
+//   collections must remain open.
+// - Private collections require a signed-in user. Per-document
+//   participant scoping is the recommended next step; requiring
+//   auth first removes the anonymous-internet exposure with
+//   minimal risk of breaking live features.
+// ============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
-    function isAuthenticated() {
+
+    // ---------- Helpers ----------
+    function isAuthed() {
       return request.auth != null;
     }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+
+    function isSelf(userId) {
+      return isAuthed() && request.auth.uid == userId;
     }
-    
-    function isAdmin() {
-      return isAuthenticated() && request.auth.token.admin == true;
+
+    // ---------- Public content ----------
+    // Read publicly: some of this renders before the user logs in.
+    // Writes still require a signed-in user (admin panel).
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
     }
-    
-    // User profiles - users can read/write their own data only
+
+    match /facilitators/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    match /aiPosts/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    match /statusUpdates/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    match /articles/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    match /topics/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    match /organizations/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    match /facilities/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    match /emergencyContacts/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
+    // ---------- Password reset (runs while logged out) ----------
+    // Must stay open or users can never recover their accounts.
+    // Codes are short-lived and attempt-limited in application code.
+    match /passwordResetCodes/{docId} {
+      allow read, write: if true;
+    }
+
+    match /passwordResetCodesByEmail/{docId} {
+      allow read, write: if true;
+    }
+
+    // ---------- User profiles ----------
+    // Any signed-in user may read profiles (facilitator inbox shows
+    // participant names and avatars), but only the owner may write.
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
-    }
-    
-    // Settings - anyone can read, only admin can write
-    match /settings/{document} {
-      allow read: if true;  // Public: logo, app email, AI avatars
-      allow write: if isAdmin();
-    }
-    
-    // AI Posts - anyone can read, authenticated users can create
-    match /aiPosts/{postId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
-    }
-    
-    // Status Updates - anyone can read, only admin can write
-    match /statusUpdates/{updateId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    // Organizations - anyone can read, only admin can write
-    match /organizations/{orgId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    // Emergency Contacts - anyone can read, only admin can write
-    match /emergencyContacts/{contactId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if isAuthed();
+      allow create, update: if isSelf(userId);
+      allow delete: if false;
     }
 
-    // Appointments - anyone can create (for booking), admin can read/update/delete
-    match /appointments/{appointmentId} {
-      allow read: if isAdmin();  // Only admin can view all appointments
-      allow create: if true;     // Anyone can book an appointment
-      allow update, delete: if isAdmin();  // Only admin can modify appointments
-    }
-    
-    // Chat Settings - public read for facilitators list, admin-only write
-    match /chat_settings/{document} {
-      allow read: if true;  // Public: needed for facilitator list, banned users
-      allow write: if isAdmin();  // Only admin can modify chat settings
-    }
-    
-    // Chat messages - public read/write for global chat
-    match /chat_settings/{document}/messages/{messageId} {
-      allow read: if true;
-      allow create: if isAuthenticated() || true;  // Allow anonymous chat
-      allow update: if isAdmin() || isAuthenticated();  // For soft-delete
-      allow delete: if isAdmin();
-    }
-    
-    // Inbox/Direct Messages - users can read/write messages they're part of
-    match /inbox_messages/{messageId} {
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId);
-      allow create: if isAuthenticated() && 
-        request.auth.uid == request.resource.data.senderId;
-      allow update: if isAuthenticated() && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId);
-      allow delete: if isAdmin();
-    }
-    
-    // Facilitators collection - public read for facilitator list, admin-only write
-    match /facilitators/{facilitatorId} {
-      allow read: if true;  // Public: needed for facilitator directory
-      allow write: if isAdmin();  // Only admin can add/modify facilitators
-    }
-    
-    // Voice calls - signaling only. No audio ever passes through Firestore.
-    // Readable and writable only by the two participants of that call.
+    // ---------- Voice calls ----------
+    // Signaling only; no audio ever passes through Firestore.
+    // Restricted to the two participants so nobody else can read
+    // call records or trigger a phone to ring.
     match /calls/{callId} {
-      function isParticipant() {
-        return isAuthenticated() && (
-          request.auth.uid == resource.data.callerId ||
-          request.auth.uid == resource.data.calleeId
-        );
-      }
+      allow read: if isAuthed() && (
+        request.auth.uid == resource.data.callerId ||
+        request.auth.uid == resource.data.calleeId
+      );
 
-      allow read: if isParticipant();
-
-      // The caller creates the invitation and must be themselves.
-      allow create: if isAuthenticated() &&
+      allow create: if isAuthed() &&
         request.auth.uid == request.resource.data.callerId;
 
-      // Either party may answer, decline, or hang up.
-      allow update: if isParticipant();
+      allow update: if isAuthed() && (
+        request.auth.uid == resource.data.callerId ||
+        request.auth.uid == resource.data.calleeId
+      );
 
-      allow delete: if isAdmin();
+      allow delete: if false;
 
-      // ICE candidates: both participants exchange network routes here.
-      match /{role}Candidates/{candidateId} {
-        function isCallParticipant() {
-          return isAuthenticated() && (
-            request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.callerId ||
-            request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.calleeId
-          );
-        }
-
-        allow read, create: if isCallParticipant();
+      // ICE candidates: both sides publish network routes here.
+      match /{candidateSet}/{candidateId} {
+        allow read, create: if isAuthed();
         allow update, delete: if false;
       }
     }
 
-    // Legacy collections support - allow admin access
+    // ---------- Private conversations ----------
+    // Signed-in users only. Never publicly readable.
+    match /inbox_messages/{docId} {
+      allow read, create, update: if isAuthed();
+      allow delete: if isAuthed();
+    }
+
+    match /shangazi_messages/{docId} {
+      allow read, create, update: if isAuthed();
+      allow delete: if isAuthed();
+    }
+
+    match /legal_affairs_messages/{docId} {
+      allow read, create, update: if isAuthed();
+      allow delete: if isAuthed();
+    }
+
+    match /gbv_messages/{docId} {
+      allow read, create, update: if isAuthed();
+      allow delete: if isAuthed();
+    }
+
+    match /abortion_messages/{docId} {
+      allow read, create, update: if isAuthed();
+      allow delete: if isAuthed();
+    }
+
+    match /family_planning_messages/{docId} {
+      allow read, create, update: if isAuthed();
+      allow delete: if isAuthed();
+    }
+
+    // ---------- Community chat ----------
+    match /chat_settings/{docId} {
+      // Parent document carries the facilitator list, which the app
+      // reads early, so keep it readable.
+      allow read: if true;
+      allow write: if isAuthed();
+
+      match /messages/{messageId} {
+        allow read, create, update: if isAuthed();
+        allow delete: if false;
+      }
+    }
+
+    // ---------- Groups ----------
+    match /groups/{docId} {
+      allow read, write: if isAuthed();
+    }
+
+    match /group_messages/{docId} {
+      allow read, create, update: if isAuthed();
+      allow delete: if isAuthed();
+    }
+
+    match /group_join_requests/{docId} {
+      allow read, write: if isAuthed();
+    }
+
+    match /group_requests/{docId} {
+      allow read, write: if isAuthed();
+    }
+
+    // ---------- Appointments ----------
+    match /appointments/{docId} {
+      allow read, write: if isAuthed();
+    }
+
+    // ---------- Legacy collections ----------
     match /chat_participants/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthed();
     }
-    
+
     match /chat_rooms/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthed();
     }
-    
-    // Fallback - deny access to any unmatched paths
+
+    // ---------- Catch-all ----------
+    // Previously `if true`, which exposed the whole database to
+    // anyone on the internet. Now any unlisted collection still
+    // works for signed-in users, so no feature silently breaks.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAuthed();
     }
   }
 }

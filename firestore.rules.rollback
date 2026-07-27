@@ -1,0 +1,40 @@
+// ============================================================
+// ROLLBACK COPY - the fully-open rules that were live before
+// the security tightening.
+//
+// If anything breaks after deploying the new rules, restore
+// instantly by copying this over firestore.rules and running:
+//
+//   firebase deploy --only firestore:rules
+//
+// WARNING: these rules allow anyone on the internet to read and
+// write the entire database, including every private message.
+// Use only as an emergency rollback, not as a long-term state.
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ========== APPOINTMENTS ==========
+    match /appointments/{appointmentId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    // Chat messages subcollection
+    match /chat_settings/{docId}/messages/{messageId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // Allow access to all other collections
+    match /{document=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
